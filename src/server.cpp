@@ -148,13 +148,11 @@ static void *runServerTraffic(void *arg)
 				// compute the distance to the heading position
 				distance = _track[n].position.getDistance(_track[n].heading);
 
-				_track[n].position.print("Position=");
-				printf("isInsideRange=%d",_track[n].position.isInsideRange());
-
 				if (distance < SERVER_DISTANCE_REACHED || !_track[n].position.isInsideRange()) {
 					/*
-					**	we have reached the headed point, so get a new heading
+					**	we have reached the headed point or we left the map, so get a new heading
 					*/
+					_track[n].position.wrapToRange();
 					_track[n].heading.setRandom();
 				}
 
@@ -163,11 +161,11 @@ static void *runServerTraffic(void *arg)
 
 				// compute the new position
 				scale = (double) KNOTS2NMS(_track[n].speed) * delta_time / distance;
-				_track[n].position = _track[n].position + (_track[n].position - _track[n].heading) * scale;
+				_track[n].position = _track[n].position + (_track[n].heading - _track[n].position) * scale;
 
 				// compute the prediction
 				scale = (double) KNOTS2NMS(_track[n].speed) * PREDICTION_TIME / distance;
-				_track[n].prediction = _track[n].position + (_track[n].position - _track[n].heading) * scale;
+				_track[n].prediction = _track[n].position + (_track[n].heading - _track[n].position) * scale;
 
 				// mark the track as updated
 				_track[n].last_update = now;
@@ -188,18 +186,6 @@ static void *runServerTraffic(void *arg)
 						_track[n].prediction.getY(),
 						_track[n].prediction.getZ());
 			}
-#if 0
-			printf("[%04d] %s (%6.1f/%6.1f/%6.1f) to (%6.1f/%6.1f/%6.1f) @ %d\n",
-					n,
-					_track[n].callsign,
-					_track[n].position.x,
-					_track[n].position.y,
-					_track[n].position.z,
-					_track[n].heading.x,
-					_track[n].heading.y,
-					_track[n].heading.z,
-					_track[n].speed);
-#endif
 		}
 
 		/*
