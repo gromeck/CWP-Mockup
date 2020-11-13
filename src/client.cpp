@@ -172,7 +172,7 @@ static void *runClientCommunication(void *arg)
 	**	lookup the host
 	*/
     if ((server = gethostbyname(_server)) == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
+        perror("ERROR, no such host");
         exit(0);
     }
 
@@ -208,10 +208,12 @@ static void *runClientCommunication(void *arg)
 		CLIENT_TRACK_UPDATE track;
 		char line[1024];
 
-		printf("waiting for track data\n");
+		if (_debug)
+			printf("waiting for track data\n");
 		if (fgets(line,sizeof(line),connectionfd)) {
 			// parse the received content
-			printf("fgets(): %s\n",line);
+			if (_debug)
+				printf("fgets(): %s\n",line);
 			memset(&track,0,sizeof(track));
 			double posX,posY,posZ;
 			double preX,preY,preZ;
@@ -234,22 +236,24 @@ static void *runClientCommunication(void *arg)
 				*/
 				track.position.set(posX,posY,posZ);
 				track.prediction.set(preX,preY,preZ);
-				printf("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)\n",
-						idx,track.callsign,
-						track.position.getX(),
-						track.position.getY(),
-						track.position.getZ(),
-						track.speed,
-						track.prediction.getX(),
-						track.prediction.getY(),
-						track.prediction.getZ());
+				if (_debug)
+					printf("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)\n",
+							idx,track.callsign,
+							track.position.getX(),
+							track.position.getY(),
+							track.position.getZ(),
+							track.speed,
+							track.prediction.getX(),
+							track.prediction.getY(),
+							track.prediction.getZ());
 				updateTrack(idx,&track);
 			}
 		}
 		else
-			printf("fgets() failed\n");
+			perror("fgets() failed");
 	}
-	printf("shutting down connection to server\n");
+	if (_debug)
+		printf("shutting down connection to server\n");
 	fclose(connectionfd);
 	close(sockfd);
 
@@ -259,7 +263,7 @@ static void *runClientCommunication(void *arg)
 
 /****************************************************************************
 
- FRONTEND
+ F R O N T E N D
 
 ****************************************************************************/
 
@@ -355,7 +359,6 @@ static airspaceWidget *airspaceDisplay;
 static void refreshDisplay(void *)
 {
 	//	do the refresh
-	//printf("refreshing display ...\n");
 	airspaceDisplay->redraw();
 
 	// schedule the next refresh
@@ -428,7 +431,8 @@ int runClient(const char *server,int port,bool fullscreen)
 	_server = (server) ? strdup(server) : "localhost";
 	memset(_track,0,sizeof(_track));
 
-	printf("map: %d/%d/%d",MAP_WIDTH,MAP_HEIGHT,MAP_DEPTH);
+	if (_debug)
+		printf("map: %d/%d/%d",MAP_WIDTH,MAP_HEIGHT,MAP_DEPTH);
 
 	/*
 	**	start a thread with the socket communication
@@ -440,7 +444,8 @@ int runClient(const char *server,int port,bool fullscreen)
 	*/
 	pthread_create(&trackingPID,NULL,runClientTracking,NULL);
 
-
-
+	/*
+	**	run the frontend thread in foreground
+	*/
 	return runClientFrontend(fullscreen);
 }/**/

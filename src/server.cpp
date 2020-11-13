@@ -43,7 +43,7 @@
 
 /****************************************************************************
 
-  A I R  T R A F F I C
+  A I R   T R A F F I C
 
 ****************************************************************************/
 static int _new_tracks = TRACKS_DEFAULT;
@@ -171,20 +171,21 @@ static void *runServerTraffic(void *arg)
 				_track[n].last_update = now;
 
 				// print some information about the track status
-				printf("[%04d] %s position=(%6.1f/%6.1f/%6.1f) heading=(%6.1f/%6.1f/%6.1f) @ %d distance=%6.1f prediction=(%6.1f/%6.1f/%6.1f)\n",
-						n,
-						_track[n].callsign,
-						_track[n].position.getX(),
-						_track[n].position.getY(),
-						_track[n].position.getZ(),
-						_track[n].heading.getX(),
-						_track[n].heading.getY(),
-						_track[n].heading.getZ(),
-						_track[n].speed,
-						distance,
-						_track[n].prediction.getX(),
-						_track[n].prediction.getY(),
-						_track[n].prediction.getZ());
+				if (_debug)
+					printf("[%04d] %s position=(%6.1f/%6.1f/%6.1f) heading=(%6.1f/%6.1f/%6.1f) @ %d distance=%6.1f prediction=(%6.1f/%6.1f/%6.1f)\n",
+							n,
+							_track[n].callsign,
+							_track[n].position.getX(),
+							_track[n].position.getY(),
+							_track[n].position.getZ(),
+							_track[n].heading.getX(),
+							_track[n].heading.getY(),
+							_track[n].heading.getZ(),
+							_track[n].speed,
+							distance,
+							_track[n].prediction.getX(),
+							_track[n].prediction.getY(),
+							_track[n].prediction.getZ());
 			}
 		}
 
@@ -293,7 +294,7 @@ static void *runServerCommunication(void *arg)
 
 /****************************************************************************
 
- FRONTEND
+ F R O N T E N D
 
 ****************************************************************************/
 static Fl_Double_Window* window;
@@ -359,7 +360,7 @@ int runServer(int port)
 	pthread_create(&trafficPID,NULL,runServerTraffic,NULL);
 
 	/*
-	**	run the frontend
+	**	run the frontend thread in foreground
 	*/
 	return runServerFrontend();
 }/**/
