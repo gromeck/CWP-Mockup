@@ -53,15 +53,6 @@
 
 static CLIENT_TRACK _track[TRACKS_MAX];
 
-static double distanceCoordinates(COORD a,COORD b)
-{
-	double x = a.x - b.x;
-	double y = a.y - b.y;
-	double z = a.z - b.z;
-
-	return sqrt(x * x + y * y + z * z);
-}
-
 static bool updateTrack(int idx,CLIENT_TRACK_UPDATE *track)
 {
 	if (idx < 0 || idx >= TRACKS_MAX)
@@ -133,7 +124,7 @@ static void *runClientTracking(void *arg)
 
 				for (int idx2 = 0;idx2 < TRACKS_MAX;idx2++) {
 					if (_track[idx2].valid && idx != idx2) {
-						if (distanceCoordinates(_track[idx].track.position,_track[idx2].track.position) < CLIENT_STCA_DISTANCE) {
+						if (_track[idx].track.position.getDistance(_track[idx2].track.position) < CLIENT_STCA_DISTANCE) {
 							stca = true;
 							break;
 						}
@@ -222,31 +213,36 @@ static void *runClientCommunication(void *arg)
 			// parse the received content
 			printf("fgets(): %s\n",line);
 			memset(&track,0,sizeof(track));
+			double posX,posY,posZ;
+			double preX,preY,preZ;
+
 			if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf",
 					&idx,
 					&track.callsign,
-					&track.position.x,
-					&track.position.y,
-					&track.position.z,
+					&posX,
+					&posY,
+					&posZ,
 					&track.speed,
-					&track.prediction.x,
-					&track.prediction.y,
-					&track.prediction.z) < 0) {
+					&preX,
+					&preY,
+					&preZ) < 0) {
 				printf("received invalid line: %s\n",line);
 			}
 			else {
 				/*
 				**	process this valid track
 				*/
+				track.position.set(posX,posY,posZ);
+				track.prediction.set(preX,preY,preZ);
 				printf("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)\n",
 						idx,track.callsign,
-						track.position.x,
-						track.position.y,
-						track.position.z,
+						track.position.getX(),
+						track.position.getY(),
+						track.position.getZ(),
 						track.speed,
-						track.prediction.x,
-						track.prediction.y,
-						track.prediction.z);
+						track.prediction.getX(),
+						track.prediction.getY(),
+						track.prediction.getZ());
 				updateTrack(idx,&track);
 			}
 		}
@@ -295,8 +291,8 @@ public:
 #define MAPX2SCR(mapx)		(x() + (mapx) / MAP_WIDTH  * w())
 #define MAPY2SCR(mapy)		(y() + (mapy) / MAP_HEIGHT * h())
 
-				int pos_x = MAPX2SCR(_track[idx].track.position.x);
-				int pos_y = MAPY2SCR(_track[idx].track.position.y);
+				int pos_x = MAPX2SCR(_track[idx].track.position.getX());
+				int pos_y = MAPY2SCR(_track[idx].track.position.getY());
 
 				// draw the symbol
 				fl_color(CLIENT_COLOR_SYMBOL);
@@ -307,7 +303,7 @@ public:
 				// draw history dots
 				fl_color(CLIENT_COLOR_HISTORY);
 				for (int dot = 0;dot < _track[idx].history_dots;dot++)
-					fl_point(MAPX2SCR(_track[idx].history[dot].x),MAPY2SCR(_track[idx].history[dot].y));
+					fl_point(MAPX2SCR(_track[idx].history[dot].getX()),MAPY2SCR(_track[idx].history[dot].getY()));
 
 				// draw red circle if another aircraft is close
 				if (_track[idx].stca) {
@@ -319,8 +315,8 @@ public:
 					// draw prediction line
 					fl_color(CLIENT_COLOR_PREDICTION);
 					fl_line(pos_x,pos_y,
-							MAPX2SCR(_track[idx].track.prediction.x),
-							MAPY2SCR(_track[idx].track.prediction.y));
+							MAPX2SCR(_track[idx].track.prediction.getX()),
+							MAPY2SCR(_track[idx].track.prediction.getY()));
 
 					// draw the label
 					char label[3][50];
@@ -331,7 +327,7 @@ public:
 
 					sprintf(label[0],"%s",_track[idx].track.callsign);
 					sprintf(label[1],"%d",_track[idx].track.speed);
-					sprintf(label[2],"%d",(int) FT2FL(NM2FT(_track[idx].track.position.z)));
+					sprintf(label[2],"%d",(int) FT2FL(NM2FT(_track[idx].track.position.getZ())));
 
 					for (int linenr = 0;linenr < 3;linenr++)
 						fl_draw(label[linenr],pos_x + CLIENT_LABEL_OFFSET_X,pos_y + CLIENT_LABEL_OFFSET_Y + linenr * fl_height());

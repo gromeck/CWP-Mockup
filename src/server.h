@@ -24,6 +24,8 @@
 #ifndef __SERVER_H__
 #define __SERVER_H__
 
+#include "coordinate.h"
+
 /*
 **	update rate for the track recomputation (in ms)
 */
@@ -44,9 +46,9 @@
 */
 typedef struct {
 	char callsign[CALLSIGN_LENGTH + 1];
-	COORD position;
-	COORD heading;
-	COORD prediction;
+	Coordinate position;
+	Coordinate heading;
+	Coordinate prediction;
 	int speed;
 	struct timeval last_update;
 } SERVER_TRACK;

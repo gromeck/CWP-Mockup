@@ -24,6 +24,8 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
+#include "coordinate.h"
+
 #define CLIENT_REFRESH_RATE_MIN		    10
 #define CLIENT_REFRESH_RATE_MAX		    5000
 #define CLIENT_REFRESH_RATE_DEFAULT	    1000
@@ -58,9 +60,9 @@
 
 typedef struct {
     char callsign[CALLSIGN_LENGTH + 1];
-    COORD position;
+    Coordinate position;
     int speed;
-    COORD prediction;
+    Coordinate prediction;
 } CLIENT_TRACK_UPDATE;
 
 typedef struct {
@@ -68,7 +70,7 @@ typedef struct {
     bool coasting;
     bool stca;
     int history_dots;
-    COORD history[CLIENT_HISTORY_DOTS_MAX];
+    Coordinate history[CLIENT_HISTORY_DOTS_MAX];
     struct timeval last_update;
     CLIENT_TRACK_UPDATE track;
 } CLIENT_TRACK;

@@ -83,8 +83,8 @@ static SERVER_TRACK *initilize_track(int idx)
 	/*
 	**	generate random position, heading and speed
 	*/
-	track.position = getRandomCoordinates();
-	track.heading = getRandomCoordinates();
+	track.position.setRandom();
+	track.heading.setRandom();
 	track.speed = RANDOM(SPEED_MIN,SPEED_MAX);
 
 	/*
@@ -141,40 +141,33 @@ static void *runServerTraffic(void *arg)
 				/*
 				**	this track has to be moved
 				*/
-				COORD delta_coord;
 				double distance;
 				double scale;
-				unsigned long delta_time = delta_tv.tv_sec * MSEC_PER_SEC + delta_tv.tv_usec / USEC_PER_MSEC;
+				double delta_time = delta_tv.tv_sec + (double) delta_tv.tv_usec / USEC_PER_MSEC / MSEC_PER_SEC;
 
 				// compute the distance to the heading position
-				distance = computeDistance(_track[n].position,_track[n].heading);
+				distance = _track[n].position.getDistance(_track[n].heading);
 
-				if (distance < SERVER_DISTANCE_REACHED || !insideMapCoordinates(_track[n].position)) {
+				_track[n].position.print("Position=");
+				printf("isInsideRange=%d",_track[n].position.isInsideRange());
+
+				if (distance < SERVER_DISTANCE_REACHED || !_track[n].position.isInsideRange()) {
 					/*
 					**	we have reached the headed point, so get a new heading
 					*/
-					_track[n].heading = getRandomCoordinates();
+					_track[n].heading.setRandom();
 				}
 
 				// compute the distance to the heading position
-				distance = computeDistance(_track[n].position,_track[n].heading);
-
-				// compute the scale factor depending on the speed
-				scale = ((double) KNOTS2NMS(_track[n].speed) * delta_time / MSEC_PER_SEC) / distance;
-
-				// compute the delta to the headed position
-				delta_coord = subtractCoordinates(_track[n].heading,_track[n].position);
+				distance = _track[n].position.getDistance(_track[n].heading);
 
 				// compute the new position
-				delta_coord = multiplyCoordinates(delta_coord,scale);
-				_track[n].position = addCoordinates(_track[n].position,delta_coord);
+				scale = (double) KNOTS2NMS(_track[n].speed) * delta_time / distance;
+				_track[n].position = _track[n].position + (_track[n].position - _track[n].heading) * scale;
 
 				// compute the prediction
-				distance = computeDistance(_track[n].position,_track[n].heading);
-				scale = ((double) KNOTS2NMS(_track[n].speed) * PREDICTION_TIME) / distance;
-				delta_coord = subtractCoordinates(_track[n].heading,_track[n].position);
-				delta_coord = multiplyCoordinates(delta_coord,scale);
-				_track[n].prediction = addCoordinates(_track[n].position,delta_coord);
+				scale = (double) KNOTS2NMS(_track[n].speed) * PREDICTION_TIME / distance;
+				_track[n].prediction = _track[n].position + (_track[n].position - _track[n].heading) * scale;
 
 				// mark the track as updated
 				_track[n].last_update = now;
@@ -183,17 +176,17 @@ static void *runServerTraffic(void *arg)
 				printf("[%04d] %s position=(%6.1f/%6.1f/%6.1f) heading=(%6.1f/%6.1f/%6.1f) @ %d distance=%6.1f prediction=(%6.1f/%6.1f/%6.1f)\n",
 						n,
 						_track[n].callsign,
-						_track[n].position.x,
-						_track[n].position.y,
-						_track[n].position.z,
-						_track[n].heading.x,
-						_track[n].heading.y,
-						_track[n].heading.z,
+						_track[n].position.getX(),
+						_track[n].position.getY(),
+						_track[n].position.getZ(),
+						_track[n].heading.getX(),
+						_track[n].heading.getY(),
+						_track[n].heading.getZ(),
 						_track[n].speed,
 						distance,
-						_track[n].prediction.x,
-						_track[n].prediction.y,
-						_track[n].prediction.z);
+						_track[n].prediction.getX(),
+						_track[n].prediction.getY(),
+						_track[n].prediction.getZ());
 			}
 #if 0
 			printf("[%04d] %s (%6.1f/%6.1f/%6.1f) to (%6.1f/%6.1f/%6.1f) @ %d\n",
@@ -290,13 +283,13 @@ static void *runServerCommunication(void *arg)
 				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f\n",
 					n,
 					_track[n].callsign,
-					_track[n].position.x,
-					_track[n].position.y,
-					_track[n].position.z,
+					_track[n].position.getX(),
+					_track[n].position.getY(),
+					_track[n].position.getZ(),
 					_track[n].speed,
-					_track[n].prediction.x,
-					_track[n].prediction.y,
-					_track[n].prediction.z) < 0)
+					_track[n].prediction.getX(),
+					_track[n].prediction.getY(),
+					_track[n].prediction.getZ()) < 0)
 				break;
 			if (fflush(connectionfd) < 0)
 				break;

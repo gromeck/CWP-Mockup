@@ -69,23 +69,6 @@
 // prediction time [s]
 #define PREDICTION_TIME     60
 
-
-
-typedef struct _coord {
-    double x;
-    double y;
-    double z;
-} COORD;
-
-
-COORD getRandomCoordinates(void);
-COORD subtractCoordinates(COORD a,COORD b);
-COORD addCoordinates(COORD a,COORD b);
-COORD multiplyCoordinates(COORD a,double factor);
-bool insideMapCoordinates(COORD a);
-
-double computeDistance(COORD a,COORD b);
-
 extern bool _shutdown;
 
 #endif
