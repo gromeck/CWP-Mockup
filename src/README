@@ -1,0 +1,7 @@
+	install autotools
+
+# apt install autoconf automake libncurses-dev
+
+	build the client software
+
+./build.sh

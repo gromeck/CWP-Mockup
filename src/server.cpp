@@ -1,0 +1,386 @@
+/*
+
+	CWPMockUp with FLTK 1.3
+
+	(c) 2020 by Christian.Lorenz@gromeck.de
+
+
+	This file is part of CWP-MockUp.
+
+    CWP-MockUp is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CWP-MockUp is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CWP-MockUp.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <time.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <math.h>
+#include <FL/Fl.H>
+#include <FL/Fl_Double_Window.H>
+#include <FL/Fl_Input.H>
+#include <FL/Fl_Int_Input.H>
+#include <FL/Fl_Button.H>
+#include <FL/Fl_Box.H>
+#include <FL/fl_ask.H>
+#include "common.h"
+#include "server.h"
+
+/****************************************************************************
+
+  A I R  T R A F F I C
+
+****************************************************************************/
+static int _new_tracks = TRACKS_DEFAULT;
+static int _tracks = 0;
+static SERVER_TRACK _track[TRACKS_MAX];
+
+#define RANDOM_UPPER_CHAR		('A' + random() % ('Z' - 'A' + 1))
+/*
+**	generate a callsign
+*/
+static const char *createCallsign(int idx)
+{
+	static char callsign[CALLSIGN_LENGTH + 1];
+
+	snprintf(callsign,sizeof(callsign),"%c%c%c%04d",
+		RANDOM_UPPER_CHAR,
+		RANDOM_UPPER_CHAR,
+		RANDOM_UPPER_CHAR,
+		idx);
+	return callsign;
+}
+
+/*
+**	initialize a track
+*/
+static SERVER_TRACK *initilize_track(int idx)
+{
+	static SERVER_TRACK track;
+
+	memset(&track,0,sizeof(track));
+
+	/*
+	**	create a call sign
+	*/
+	strcpy(track.callsign,createCallsign(idx));
+
+	/*
+	**	generate random position, heading and speed
+	*/
+	track.position = getRandomCoordinates();
+	track.heading = getRandomCoordinates();
+	track.speed = RANDOM(SPEED_MIN,SPEED_MAX);
+
+	/*
+	**	timestamp
+	*/
+	gettimeofday(&track.last_update,NULL);
+
+	return &track;
+}
+
+/*
+**	thread to simulate the air traffic
+*/
+static void *runServerTraffic(void *arg)
+{
+	while (!_shutdown) {
+		int n;
+		struct timeval now;
+		struct timeval max_delta;
+
+		/*
+		**	check the number of requested tracks
+		*/
+		if (_new_tracks < TRACKS_MIN)
+			_new_tracks = TRACKS_MIN;
+		if (_new_tracks > TRACKS_MAX)
+			_new_tracks = TRACKS_MAX;
+
+		/*
+		**	decrease traffic -- simply cut off the superflous tracks
+		*/
+		if (_new_tracks < _tracks)
+			_tracks = _new_tracks;
+
+		/*
+		**	increase traffic -- initialize new tracks
+		*/
+		if (_new_tracks > _tracks) {
+			for (;_tracks < _new_tracks;_tracks++)
+				_track[_tracks] = *initilize_track(_tracks);
+		}
+
+		/*
+		**	move all tracks
+		*/
+		gettimeofday(&now,NULL);
+		max_delta.tv_sec = SERVER_TRACK_UPDATE_RATE / MSEC_PER_SEC;
+		max_delta.tv_usec = (SERVER_TRACK_UPDATE_RATE - max_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
+		for (n = 0;n < _tracks;n++) {
+			struct timeval delta_tv;
+
+			timersub(&now,&_track[n].last_update,&delta_tv);
+			if (timercmp(&delta_tv,&max_delta,>)) {
+				/*
+				**	this track has to be moved
+				*/
+				COORD delta_coord;
+				double distance;
+				double scale;
+				unsigned long delta_time = delta_tv.tv_sec * MSEC_PER_SEC + delta_tv.tv_usec / USEC_PER_MSEC;
+
+				// compute the distance to the heading position
+				distance = computeDistance(_track[n].position,_track[n].heading);
+
+				if (distance < SERVER_DISTANCE_REACHED || !insideMapCoordinates(_track[n].position)) {
+					/*
+					**	we have reached the headed point, so get a new heading
+					*/
+					_track[n].heading = getRandomCoordinates();
+				}
+
+				// compute the distance to the heading position
+				distance = computeDistance(_track[n].position,_track[n].heading);
+
+				// compute the scale factor depending on the speed
+				scale = ((double) KNOTS2NMS(_track[n].speed) * delta_time / MSEC_PER_SEC) / distance;
+
+				// compute the delta to the headed position
+				delta_coord = subtractCoordinates(_track[n].heading,_track[n].position);
+
+				// compute the new position
+				delta_coord = multiplyCoordinates(delta_coord,scale);
+				_track[n].position = addCoordinates(_track[n].position,delta_coord);
+
+				// compute the prediction
+				distance = computeDistance(_track[n].position,_track[n].heading);
+				scale = ((double) KNOTS2NMS(_track[n].speed) * PREDICTION_TIME) / distance;
+				delta_coord = subtractCoordinates(_track[n].heading,_track[n].position);
+				delta_coord = multiplyCoordinates(delta_coord,scale);
+				_track[n].prediction = addCoordinates(_track[n].position,delta_coord);
+
+				// mark the track as updated
+				_track[n].last_update = now;
+
+				// print some information about the track status
+				printf("[%04d] %s position=(%6.1f/%6.1f/%6.1f) heading=(%6.1f/%6.1f/%6.1f) @ %d distance=%6.1f prediction=(%6.1f/%6.1f/%6.1f)\n",
+						n,
+						_track[n].callsign,
+						_track[n].position.x,
+						_track[n].position.y,
+						_track[n].position.z,
+						_track[n].heading.x,
+						_track[n].heading.y,
+						_track[n].heading.z,
+						_track[n].speed,
+						distance,
+						_track[n].prediction.x,
+						_track[n].prediction.y,
+						_track[n].prediction.z);
+			}
+#if 0
+			printf("[%04d] %s (%6.1f/%6.1f/%6.1f) to (%6.1f/%6.1f/%6.1f) @ %d\n",
+					n,
+					_track[n].callsign,
+					_track[n].position.x,
+					_track[n].position.y,
+					_track[n].position.z,
+					_track[n].heading.x,
+					_track[n].heading.y,
+					_track[n].heading.z,
+					_track[n].speed);
+#endif
+		}
+
+		/*
+		**	wait some time
+		*/
+		usleep(SERVER_TRACK_UPDATE_RATE * USEC_PER_MSEC);
+	}
+	return NULL;
+}
+
+/****************************************************************************
+
+ S O C K E T   C O M M U N I C A T I O N
+
+****************************************************************************/
+static int _port = 0;
+
+/*
+**	list on the given port
+*/
+static void *runServerCommunication(void *arg)
+{
+	struct sockaddr_in serv_addr;
+	struct sockaddr *addr;
+	socklen_t addr_len = sizeof(*addr);
+	int sockfd,connection;
+	FILE *connectionfd;
+	char buffer[256];
+	int  n;
+
+	/*
+	**	create socket
+	*/
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("ERROR opening socket");
+		exit(1);
+	}
+
+	/*
+	**	Initialize socket structure
+	*/
+	bzero((char *) &serv_addr, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = INADDR_ANY;
+	serv_addr.sin_port = htons(_port);
+
+	/*
+	**	bind the socket
+	*/
+	if (bind(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
+		perror("ERROR on binding");
+		exit(1);
+	}
+
+	while (!_shutdown) {
+		/*
+		**	listen on socket
+		*/
+		listen(sockfd,5);
+
+		/*
+		**	accept connection
+		*/
+		if ((connection = accept(sockfd,(struct sockaddr *) &addr,&addr_len)) < 0) {
+			perror("ERROR on accept");
+			exit(1);
+		}
+
+		if (!(connectionfd = fdopen(connection,"w+"))) {
+			perror("ERROR on fdopen");
+			exit(1);
+		}
+
+		/*
+		**	push the data to the client
+		*/
+		while (!_shutdown) {
+			if (fprintf(connectionfd,"TRACKS=%d\n",_tracks) < 0)
+				break;
+			for (n = 0;n < _tracks;n++)
+				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f\n",
+					n,
+					_track[n].callsign,
+					_track[n].position.x,
+					_track[n].position.y,
+					_track[n].position.z,
+					_track[n].speed,
+					_track[n].prediction.x,
+					_track[n].prediction.y,
+					_track[n].prediction.z) < 0)
+				break;
+			if (fflush(connectionfd) < 0)
+				break;
+
+			/*
+			**	wait some time
+			*/
+			usleep(SERVER_COMMUNICATION_UPDATE_RATE * USEC_PER_MSEC);
+		}
+		fclose(connectionfd);
+		close(connection);
+	}
+	return NULL;
+}
+
+/****************************************************************************
+
+ FRONTEND
+
+****************************************************************************/
+static Fl_Double_Window* window;
+static Fl_Box *numTracksLabel;
+static Fl_Int_Input *numTracksInput;
+static Fl_Button *setButton;
+
+static void updateNumTracksInput(int tracks)
+{
+	char buffer[10];
+
+	sprintf(buffer,"%d",tracks);
+	numTracksInput->value(buffer);
+}
+
+static void clickedSetButton(Fl_Widget *widget)
+{
+	int tracks = atoi(numTracksInput->value());
+
+	if (tracks < TRACKS_MIN)
+		tracks = TRACKS_MIN;
+	if (tracks > TRACKS_MAX)
+		tracks = TRACKS_MAX;
+	updateNumTracksInput(_new_tracks = tracks);
+}
+
+static int runServerFrontend(void)
+{
+	window = new Fl_Double_Window(300,120,"Server " __TITLE__);
+
+	numTracksLabel = new Fl_Box(10,10,280,30,"Number of Tracks:");
+	numTracksLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+
+	numTracksInput = new Fl_Int_Input(10,40,280,30,"");
+	numTracksInput->color((Fl_Color) 55);
+	numTracksInput->maximum_size(5);
+	updateNumTracksInput(_new_tracks);
+
+	setButton = new Fl_Button(10,80,280,30,"Set");
+	setButton->callback(clickedSetButton);
+
+	window->end();
+	window->show();
+
+	return Fl::run();
+}
+
+int runServer(int port)
+{
+	pthread_t communicationPID;
+	pthread_t trafficPID;
+
+	_port = port;
+
+	/*
+	**	start a thread with the socket communication
+	*/
+	pthread_create(&communicationPID,NULL,runServerCommunication,NULL);
+
+	/*
+	**	start a thread with the air traffic simulation
+	*/
+	pthread_create(&trafficPID,NULL,runServerTraffic,NULL);
+
+	/*
+	**	run the frontend
+	*/
+	return runServerFrontend();
+}/**/
