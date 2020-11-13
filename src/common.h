@@ -70,5 +70,6 @@
 #define PREDICTION_TIME     60
 
 extern bool _shutdown;
+extern bool _debug;
 
 #endif

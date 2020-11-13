@@ -38,6 +38,7 @@
 #include "client.h"
 
 bool _shutdown = false;
+bool _debug = false;
 
 /*
 **  the shutdown handler sets <_shutdown> to non-zero
@@ -64,6 +65,8 @@ static void usage(const char *argv0)
 					"          this option is not passed, " __TITLE__ " will run in server mode\n");
 	fprintf(stderr," -p <port>\n --port <port>\n"
 					"          use <port> for the communication between server and client; default is %d\n",DEFAULT_PORT);
+	fprintf(stderr," -d\n --debug\n"
+					"          enable debug mode and print some information\n");
 	fprintf(stderr," -f\n --fullscreen\n"
 					"          when " __TITLE__ " runs in client mode, open the main window fullscreen\n");
 	exit(-1);
@@ -83,6 +86,7 @@ int main(int argc,char *argv[])
 		{ "server",		1,	0,	's' },
 		{ "port",		1,	0,	'p' },
 		{ "fullscreen",	0,	0,	'f' },
+		{ "debug",		0,	0,	'd' },
 		{ NULL,			0,	0,	0	},
 	};
 
@@ -125,6 +129,11 @@ int main(int argc,char *argv[])
 						*/
 						fullscreen = true;
 						break;
+			case 'd':	/*
+						**	print some debug
+						*/
+						_debug = true;
+						break;
 			default:
 			usage:		/*
 						**	usage
@@ -154,7 +163,8 @@ int main(int argc,char *argv[])
 	signal(SIGPIPE,SIG_IGN);
 	signal(SIGVTALRM,SIG_IGN);
 
-	printf("%s: running in %s mode with port %d\n",argv[0],(server) ? "client" : "server",port);
+	if (_debug)
+		printf("%s: running in %s mode with port %d\n",argv[0],(server) ? "client" : "server",port);
 
 	if (server)
 		runClient(server,port,fullscreen);
