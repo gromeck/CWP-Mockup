@@ -1,0 +1,34 @@
+providers: [
+  {
+    key: "makefile"
+    config:
+      file: "Makefile"
+      regex: "^[A-Za-z][^$]+$"
+      overwrite_wd: true
+      props:
+        wd: "."
+        env: {}
+        modifier:
+          shell:
+            command: "bash -c"
+          save_all: {}
+        environment:
+          name: "child_process"
+          config:
+            stdoe: "both"
+        stdout:
+          pipeline: []
+        stderr:
+          pipeline: []
+        output:
+          console:
+            close_success: false
+            queue_in_buffer: false
+            colors: false
+            stdin: false
+          linter:
+            no_trace: false
+            immediate: false
+        version: 2
+  }
+]
