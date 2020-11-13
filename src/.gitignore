@@ -14,5 +14,6 @@ install-sh
 missing
 stamp-h1
 *.o
+CWPMockUp
 CWP-Mockup
 *.swp
