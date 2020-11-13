@@ -168,4 +168,20 @@ bool Coordinate::isInsideRange(void)
 	return true;
 }
 
-/**/
+void Coordinate::wrapToRange(void)
+{
+	if (this->x < 0)
+	 	this->x = 0;
+	if (this->x > MAP_WIDTH)
+		this->x = MAP_WIDTH;
+
+	if (this->y < 0)
+	 	this->y = 0;
+	if (this->y > MAP_HEIGHT)
+		this->y = MAP_HEIGHT;
+
+	if (this->z < 0)
+	 	this->z = 0;
+	if (this->z > MAP_DEPTH)
+		this->z = MAP_DEPTH;
+}/**/

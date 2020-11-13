@@ -59,6 +59,7 @@ public:
 
     double getDistance(Coordinate b);
     bool isInsideRange(void);
+    void wrapToRange(void);
 };
 
 #endif
