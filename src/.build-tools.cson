@@ -9,22 +9,30 @@ providers: [
         wd: "."
         env: {}
         modifier:
-          shell:
-            command: "bash -c"
           save_all: {}
         environment:
           name: "child_process"
           config:
             stdoe: "both"
         stdout:
-          pipeline: []
+          pipeline: [
+            {
+              name: "all"
+            }
+          ]
         stderr:
-          pipeline: []
+          pipeline: [
+            {
+              name: "profile"
+              config:
+                profile: "gcc_clang"
+            }
+          ]
         output:
           console:
-            close_success: false
+            close_success: true
             queue_in_buffer: false
-            colors: false
+            colors: true
             stdin: false
           linter:
             no_trace: false
