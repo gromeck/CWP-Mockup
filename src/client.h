@@ -40,6 +40,8 @@
 #define CLIENT_SYMBOL_HEIGHT            15
 #define CLIENT_LABEL_OFFSET_X           50
 #define CLIENT_LABEL_OFFSET_Y           -25
+#define CLIENT_LABEL_FONTFACE           FL_COURIER
+#define CLIENT_LABEL_FONTSIZE           12
 
 #define CLIENT_TRACK_UPDATE_RATE        1
 // in ms
@@ -48,6 +50,15 @@
 
 // short term conflict alert, nm
 #define CLIENT_STCA_DISTANCE            10.0
+
+// frozen picture
+#define CLIENT_NOCONNECTION_BACKGROUND  FL_RED
+#define CLIENT_NOCONNECTION_FOREGROUND  FL_WHITE
+#define CLIENT_NOCONNECTION_WIDTH       300
+#define CLIENT_NOCONNECTION_HEIGHT      30
+#define CLIENT_NOCONNECTION_FONTFACE    FL_HELVETICA_BOLD
+#define CLIENT_NOCONNECTION_FONTSIZE    24
+#define CLIENT_NOCONNECTION_MESSAGE     " NO SERVER CONNECTION "
 
 // some frontend colors
 #define CLIENT_COLOR_BACKGROUND         FL_LIGHT1

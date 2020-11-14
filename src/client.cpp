@@ -45,6 +45,8 @@
 #include "common.h"
 #include "client.h"
 
+static bool _connected = false;
+
 /****************************************************************************
 
  T R A C K   H A N D L I N G
@@ -156,17 +158,9 @@ static void *runClientCommunication(void *arg)
 	struct sockaddr *addr;
 	struct hostent *server;
 	socklen_t addr_len = sizeof(*addr);
-	int sockfd;
-	FILE *connectionfd;
+	int sockfd = -1;
+	FILE *connectionfd = NULL;
 	char buffer[256];
-
-	/*
-	**	create socket
-	*/
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("ERROR opening socket");
-		exit(1);
-	}
 
 	/*
 	**	lookup the host
@@ -176,87 +170,117 @@ static void *runClientCommunication(void *arg)
         exit(0);
     }
 
-	/*
-	**	Initialize socket structure
-	*/
-	bzero((char *) &serv_addr, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	bcopy((char *) server->h_addr,(char *) &serv_addr.sin_addr.s_addr,server->h_length);
-	serv_addr.sin_port = htons(_port);
-
-	/*
-	**	connect to the socket
-	*/
-	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-		perror("ERROR on connect");
-		exit(1);
-	}
-
-	/*
-	**	dup the fd to use streams
-	*/
-	if (!(connectionfd = fdopen(sockfd,"r"))) {
-		perror("ERROR on fdopen");
-		exit(1);
-	}
-
-	/*
-	**	read the data to the client
-	*/
 	while (!_shutdown) {
-		int  idx;
-		CLIENT_TRACK_UPDATE track;
-		char line[1024];
+		/*
+		**	create socket
+		*/
+		if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+			perror("ERROR opening socket");
+			break;
+		}
 
-		if (_debug)
-			printf("waiting for track data\n");
-		if (fgets(line,sizeof(line),connectionfd)) {
-			// parse the received content
+		/*
+		**	Initialize socket structure
+		*/
+		bzero((char *) &serv_addr, sizeof(serv_addr));
+		serv_addr.sin_family = AF_INET;
+		bcopy((char *) server->h_addr,(char *) &serv_addr.sin_addr.s_addr,server->h_length);
+		serv_addr.sin_port = htons(_port);
+
+		/*
+		**	connect to the socket
+		*/
+		if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
 			if (_debug)
-				printf("fgets(): %s\n",line);
-			memset(&track,0,sizeof(track));
-			double posX,posY,posZ;
-			double preX,preY,preZ;
+				perror("ERROR on connect");
+			close(sockfd);
+			sockfd = -1;
+		}
+		else {
+			/*
+			**	dup the fd to use streams
+			*/
+			if (!(connectionfd = fdopen(sockfd,"r"))) {
+				if (_debug)
+					perror("ERROR on fdopen");
+			}
+			else
+				_connected = true;
+		}
 
-			if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf",
-					&idx,
-					&track.callsign,
-					&posX,
-					&posY,
-					&posZ,
-					&track.speed,
-					&preX,
-					&preY,
-					&preZ) < 0) {
-				printf("received invalid line: %s\n",line);
+		/*
+		**	read the data to the client
+		*/
+		while (connectionfd && !_shutdown) {
+			int  idx;
+			CLIENT_TRACK_UPDATE track;
+			char line[1024];
+
+			if (_debug)
+				printf("waiting for track data\n");
+			if (fgets(line,sizeof(line),connectionfd)) {
+				// parse the received content
+				if (_debug)
+					printf("fgets(): %s\n",line);
+				memset(&track,0,sizeof(track));
+				double posX,posY,posZ;
+				double preX,preY,preZ;
+
+				if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf",
+						&idx,
+						&track.callsign,
+						&posX,
+						&posY,
+						&posZ,
+						&track.speed,
+						&preX,
+						&preY,
+						&preZ) < 0) {
+					if (_debug)
+						printf("received invalid line: %s\n",line);
+				}
+				else {
+					/*
+					**	process this valid track
+					*/
+					track.position.set(posX,posY,posZ);
+					track.prediction.set(preX,preY,preZ);
+					if (_debug)
+						printf("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)\n",
+								idx,track.callsign,
+								track.position.getX(),
+								track.position.getY(),
+								track.position.getZ(),
+								track.speed,
+								track.prediction.getX(),
+								track.prediction.getY(),
+								track.prediction.getZ());
+					updateTrack(idx,&track);
+				}
 			}
 			else {
-				/*
-				**	process this valid track
-				*/
-				track.position.set(posX,posY,posZ);
-				track.prediction.set(preX,preY,preZ);
 				if (_debug)
-					printf("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)\n",
-							idx,track.callsign,
-							track.position.getX(),
-							track.position.getY(),
-							track.position.getZ(),
-							track.speed,
-							track.prediction.getX(),
-							track.prediction.getY(),
-							track.prediction.getZ());
-				updateTrack(idx,&track);
+					perror("fgets() failed");
+				break;
 			}
 		}
-		else
-			perror("fgets() failed");
-	}
-	if (_debug)
-		printf("shutting down connection to server\n");
-	fclose(connectionfd);
-	close(sockfd);
 
+		// disconnect
+		_connected = false;
+		if (_debug)
+			printf("shutting down connection to server\n");
+		if (connectionfd) {
+			fclose(connectionfd);
+			connectionfd = NULL;
+		}
+		if (sockfd > 0) {
+			close(sockfd);
+			sockfd = -1;
+		}
+
+		// wait before reconnect
+		sleep(1);
+	}
 	return NULL;
 }
 
@@ -287,6 +311,23 @@ public:
 		// draw the background
 		fl_draw_box(FL_FLAT_BOX,x(),y(),w(),h(),CLIENT_COLOR_BACKGROUND);
 
+		if (!_connected) {
+			/*
+			**	display the frozen message
+			*/
+			fl_font(CLIENT_NOCONNECTION_FONTFACE,CLIENT_NOCONNECTION_FONTSIZE);
+			int width = fl_width(CLIENT_NOCONNECTION_MESSAGE);
+			int height = fl_height();
+
+			fl_draw_box(FL_FLAT_BOX,
+					x() + (w() - width) / 2,y(),
+					width,height * 1.1,CLIENT_NOCONNECTION_BACKGROUND);
+			fl_color(CLIENT_NOCONNECTION_FOREGROUND);
+
+			fl_draw(CLIENT_NOCONNECTION_MESSAGE,
+				x() + (w() - width) / 2,
+				y() + height - (height - CLIENT_NOCONNECTION_FONTSIZE) / 2);
+		}
 		for (int idx = 0;idx < TRACKS_MAX;idx++) {
 			if (_track[idx].valid) {
 				/*
@@ -327,12 +368,13 @@ public:
 
 					fl_color(CLIENT_COLOR_LABEL_LINE);
 					fl_line(pos_x,pos_y,pos_x + CLIENT_LABEL_OFFSET_X,pos_y  + CLIENT_LABEL_OFFSET_Y);
-					fl_color(CLIENT_COLOR_LABEL);
 
 					sprintf(label[0],"%s",_track[idx].track.callsign);
 					sprintf(label[1],"%d",_track[idx].track.speed);
 					sprintf(label[2],"%d",(int) FT2FL(NM2FT(_track[idx].track.position.getZ())));
 
+					fl_color(CLIENT_COLOR_LABEL);
+					fl_font(CLIENT_LABEL_FONTFACE,CLIENT_LABEL_FONTSIZE);
 					for (int linenr = 0;linenr < 3;linenr++)
 						fl_draw(label[linenr],pos_x + CLIENT_LABEL_OFFSET_X,pos_y + CLIENT_LABEL_OFFSET_Y + linenr * fl_height());
 				}
