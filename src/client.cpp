@@ -391,9 +391,29 @@ public:
 */
 static Fl_Double_Window* window;
 static Fl_Box *refreshRateLabel;
+static Fl_Box *clockWidget;
 static Fl_Int_Input *refreshRateInput;
 static Fl_Button *setButton;
 static airspaceWidget *airspaceDisplay;
+
+/*
+**	force the redraw of the airspace
+*/
+static void refreshClock(void *)
+{
+	static char buffer[10];
+	time_t now;
+	struct tm * timeinfo;
+
+	time(&now);
+	timeinfo = localtime(&now);
+	sprintf(buffer,"%02d:%02d:%02d",
+			timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
+	clockWidget->label(buffer);
+
+	// schedule the next refresh
+	Fl::add_timeout(1,refreshClock);
+}
 
 /*
 **	force the redraw of the airspace
@@ -452,6 +472,15 @@ static int runClientFrontend(bool fullscreen)
 
 	setButton = new Fl_Button(220,10,80,30,"Set");
 	setButton->callback(clickedSetButton);
+
+	clockWidget = new Fl_Box(CLIENT_WINDOW_WIDTH_MIN - CLIENT_CLOCK_WIDTH - 10,10,CLIENT_CLOCK_WIDTH,CLIENT_CLOCK_HEIGHT,"");
+	clockWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_CENTER);
+	clockWidget->color(FL_BACKGROUND_COLOR);
+	clockWidget->box(FL_FLAT_BOX);
+	clockWidget->labelcolor(CLIENT_CLOCK_COLOR);
+	clockWidget->labelfont(CLIENT_CLOCK_FONTFACE);
+	clockWidget->labelsize(CLIENT_CLOCK_HEIGHT);
+	Fl::add_timeout(1,refreshClock);
 
 	airspaceDisplay = new airspaceWidget(0,50,window->w(),window->h() - 40,"display");
 	airspaceDisplay->color((Fl_Color) 10);

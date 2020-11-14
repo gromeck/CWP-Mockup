@@ -26,6 +26,11 @@
 
 #include "coordinate.h"
 
+#define CLIENT_CLOCK_WIDTH              150
+#define CLIENT_CLOCK_HEIGHT             (CLIENT_CLOCK_WIDTH * 2 / 10)
+#define CLIENT_CLOCK_COLOR              FL_DARK2
+#define CLIENT_CLOCK_FONTFACE           FL_SCREEN_BOLD
+
 #define CLIENT_REFRESH_RATE_MIN		    10
 #define CLIENT_REFRESH_RATE_MAX		    5000
 #define CLIENT_REFRESH_RATE_DEFAULT	    1000
