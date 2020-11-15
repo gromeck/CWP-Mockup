@@ -215,7 +215,6 @@ static void *runServerCommunication(void *arg)
 	int sockfd,connection;
 	FILE *connectionfd;
 	char buffer[256];
-	int  n;
 
 	/*
 	**	create socket
@@ -243,30 +242,36 @@ static void *runServerCommunication(void *arg)
 
 	while (!_shutdown) {
 		/*
-		**	listen on socket
+		**	listen on socket for incoming connection request
 		*/
+		if (_debug)
+			printf("listening on socket ...\n");
 		listen(sockfd,5);
 
 		/*
 		**	accept connection
 		*/
+		if (_debug)
+			printf("accepting connection ...\n");
 		if ((connection = accept(sockfd,(struct sockaddr *) &addr,&addr_len)) < 0) {
 			perror("ERROR on accept");
-			exit(1);
 		}
-
-		if (!(connectionfd = fdopen(connection,"w+"))) {
-			perror("ERROR on fdopen");
-			exit(1);
+		else {
+			if (!(connectionfd = fdopen(connection,"w+"))) {
+				perror("ERROR on fdopen");
+			}
 		}
 
 		/*
 		**	push the data to the client
 		*/
-		while (!_shutdown) {
+		while (connectionfd && !_shutdown) {
+			if (_debug)
+				printf("waiting for data ...\n");
+
 			if (fprintf(connectionfd,"TRACKS=%d\n",_tracks) < 0)
 				break;
-			for (n = 0;n < _tracks;n++)
+			for (int n = 0;n < _tracks;n++)
 				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f\n",
 					n,
 					_track[n].callsign,
@@ -286,9 +291,21 @@ static void *runServerCommunication(void *arg)
 			*/
 			usleep(SERVER_COMMUNICATION_UPDATE_RATE * USEC_PER_MSEC);
 		}
-		fclose(connectionfd);
-		close(connection);
+
+		/*
+		**	close this connection
+		*/
+		if (connectionfd) {
+			fclose(connectionfd);
+			connectionfd = NULL;
+		}
+		if (connection > 0) {
+			close(connection);
+			connection = -1;
+		}
 	}
+	if (_debug)
+		printf("shuttding down thread runServerCommunication()");
 	return NULL;
 }
 
