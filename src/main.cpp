@@ -82,7 +82,7 @@ int main(int argc,char *argv[])
 	char short_options[BUFSIZ];
 	struct option long_options[] = {
 		{ "version",	0,	0,	'V' },
-		{ "help",		0,	0,	'?' },
+		{ "help",		0,	0,	'h' },
 		{ "server",		1,	0,	's' },
 		{ "port",		1,	0,	'p' },
 		{ "fullscreen",	0,	0,	'f' },
@@ -109,7 +109,8 @@ int main(int argc,char *argv[])
 						printf("(c) 2020 by Christian Lorenz\n");
 						exit(0);
 						break;
-			case '?':	/*
+			case '?':
+			case 'h':	/*
 						**	print the usage
 						*/
 						goto usage;
@@ -134,13 +135,11 @@ int main(int argc,char *argv[])
 						*/
 						_debug = true;
 						break;
-			default:
-			usage:		/*
+			default:	/*
 						**	usage
 						*/
-						fprintf(stderr,"%s: unknown option %c\n",
-							__TITLE__,c);
-						usage(argv[0]);
+						fprintf(stderr,"%s: unknown option %c\n",__TITLE__,c);
+			usage:		usage(argv[0]);
 						exit(-1);
 						break;
 		}
