@@ -45,8 +45,9 @@
 #define CLIENT_SYMBOL_HEIGHT            15
 #define CLIENT_LABEL_OFFSET_X           50
 #define CLIENT_LABEL_OFFSET_Y           -25
+#define CLIENT_LABEL_LINES              3
 #define CLIENT_LABEL_FONTFACE           FL_COURIER
-#define CLIENT_LABEL_FONTSIZE           12
+#define CLIENT_LABEL_FONTSIZE           10
 
 #define CLIENT_TRACK_UPDATE_RATE        1
 // in ms

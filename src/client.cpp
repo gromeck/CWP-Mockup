@@ -364,18 +364,19 @@ public:
 							MAPY2SCR(_track[idx].track.prediction.getY()));
 
 					// draw the label
-					char label[3][50];
+					char label[CLIENT_LABEL_LINES][50];
+					int linenr = 0;
 
 					fl_color(CLIENT_COLOR_LABEL_LINE);
 					fl_line(pos_x,pos_y,pos_x + CLIENT_LABEL_OFFSET_X,pos_y  + CLIENT_LABEL_OFFSET_Y);
 
-					sprintf(label[0],"%s",_track[idx].track.callsign);
-					sprintf(label[1],"%d",_track[idx].track.speed);
-					sprintf(label[2],"%d",(int) FT2FL(NM2FT(_track[idx].track.position.getZ())));
+					sprintf(label[linenr++],"%s",_track[idx].track.callsign);
+					sprintf(label[linenr++],"%d",_track[idx].track.speed);
+					sprintf(label[linenr++],"%d",(int) FT2FL(NM2FT(_track[idx].track.position.getZ())));
 
 					fl_color(CLIENT_COLOR_LABEL);
 					fl_font(CLIENT_LABEL_FONTFACE,CLIENT_LABEL_FONTSIZE);
-					for (int linenr = 0;linenr < 3;linenr++)
+					for (linenr = 0;linenr < CLIENT_LABEL_LINES;linenr++)
 						fl_draw(label[linenr],pos_x + CLIENT_LABEL_OFFSET_X,pos_y + CLIENT_LABEL_OFFSET_Y + linenr * fl_height());
 				}
 			}
