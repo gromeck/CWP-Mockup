@@ -34,6 +34,12 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <math.h>
+#include <pugixml.hpp>
+#include <ext/stdio_filebuf.h>
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+#include <string>
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Input.H>
@@ -46,6 +52,8 @@
 #include "client.h"
 
 static bool _connected = false;
+
+using namespace std;
 
 /****************************************************************************
 
@@ -198,70 +206,132 @@ static void *runClientCommunication(void *arg)
 		}
 		else {
 			/*
-			**	dup the fd to use streams
+			**	create an iostream
 			*/
-			if (!(connectionfd = fdopen(sockfd,"r"))) {
-				if (_debug)
-					perror("ERROR on fdopen");
-			}
-			else
+#if 1
+			__gnu_cxx::stdio_filebuf<char> filebuf(sockfd, std::ios::in);
+			std::istream ifs(&filebuf);
+#else
+			std::filebuf filebuf(sockfd,std::ios::in)
+			std::istream ifs(&filebuf);
+#endif
+			if (ifs.good()) {
 				_connected = true;
-		}
-
-		/*
-		**	read the data to the client
-		*/
-		while (connectionfd && !_shutdown) {
-			int  idx;
-			CLIENT_TRACK_UPDATE track;
-			char line[1024];
-
-			if (_debug)
-				printf("waiting for track data\n");
-			if (fgets(line,sizeof(line),connectionfd)) {
-				// parse the received content
-				if (_debug)
-					printf("fgets(): %s\n",line);
-				memset(&track,0,sizeof(track));
-				double posX,posY,posZ;
-				double preX,preY,preZ;
-
-				if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf",
-						&idx,
-						&track.callsign,
-						&posX,
-						&posY,
-						&posZ,
-						&track.speed,
-						&preX,
-						&preY,
-						&preZ) < 0) {
-					if (_debug)
-						printf("received invalid line: %s\n",line);
-				}
-				else {
-					/*
-					**	process this valid track
-					*/
-					track.position.set(posX,posY,posZ);
-					track.prediction.set(preX,preY,preZ);
-					if (_debug)
-						printf("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)\n",
-								idx,track.callsign,
-								track.position.getX(),
-								track.position.getY(),
-								track.position.getZ(),
-								track.speed,
-								track.prediction.getX(),
-								track.prediction.getY(),
-								track.prediction.getZ());
-					updateTrack(idx,&track);
-				}
 			}
 			else {
 				if (_debug)
-					perror("fgets() failed");
-				break;
+  					printf("loading of XML failed\n");
+			}
+
+			/*
+			**	read the data to the client
+			*/
+			while (_connected && !_shutdown) {
+				/*
+				**	read the XML document into memory
+				*/
+				char buffer[100000];
+				int len;
+
+				if (_debug)
+					printf("waiting for track data\n");
+				if ((len = read(sockfd,buffer,sizeof(buffer))) > 0) {
+					if (_debug)
+						printf("len=%d\n",len);
+
+					/*
+					**	load the XML tree from memory
+					*/
+					pugi::xml_document xml;
+					pugi::xml_parse_result result = xml.load_buffer(buffer,len);
+
+					if (result.status == pugi::status_ok) {
+						if (_debug) {
+							xml.print(std::cout);
+							std::cout << std::endl;
+						}
+
+						/*
+						**	point to track->tracks...
+						*/
+						pugi::xml_node node  = xml.first_child().first_child();
+
+						do {
+							/*
+							**	walk thru the XML items
+							*/
+							CLIENT_TRACK_UPDATE track;
+							memset(&track,0,sizeof(track));
+
+							int idx = node.attribute("index").as_int();
+							strcpy(track.callsign,node.attribute("callsign").as_string());
+							track.speed = node.attribute("speed").as_int();
+							track.position.set(node.attribute("positionX").as_double(),
+									node.attribute("positionY").as_double(),
+									node.attribute("positionZ").as_double());
+							track.speed = node.attribute("speed").as_int();
+							track.prediction.set(node.attribute("predictionX").as_double(),
+									node.attribute("predictionY").as_double(),
+									node.attribute("predictionZ").as_double());
+
+							/*
+							**	update the track file
+							*/
+							updateTrack(idx,&track);
+						} while (node = node.next_sibling());
+					}
+				}
+#if 0
+				int  idx;
+				CLIENT_TRACK_UPDATE track;
+				char line[1024];
+
+				if (fgets(line,sizeof(line),connectionfd)) {
+					// parse the received content
+					if (_debug)
+						printf("fgets(): %s\n",line);
+					memset(&track,0,sizeof(track));
+					double posX,posY,posZ;
+					double preX,preY,preZ;
+
+					if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf",
+							&idx,
+							&track.callsign,
+							&posX,
+							&posY,
+							&posZ,
+							&track.speed,
+							&preX,
+							&preY,
+							&preZ) < 0) {
+						if (_debug)
+							printf("received invalid line: %s\n",line);
+					}
+					else {
+						/*
+						**	process this valid track
+						*/
+						track.position.set(posX,posY,posZ);
+						track.prediction.set(preX,preY,preZ);
+						if (_debug)
+							printf("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)\n",
+									idx,track.callsign,
+									track.position.getX(),
+									track.position.getY(),
+									track.position.getZ(),
+									track.speed,
+									track.prediction.getX(),
+									track.prediction.getY(),
+									track.prediction.getZ());
+						updateTrack(idx,&track);
+					}
+				}
+				else {
+					if (_debug)
+						perror("fgets() failed");
+					break;
+				}
+#endif
 			}
 		}
 

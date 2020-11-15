@@ -31,6 +31,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <math.h>
+#include <pugixml.hpp>
+#include <ext/stdio_filebuf.h>
+#include <iostream>
+#include <fstream>
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Input.H>
@@ -212,10 +216,8 @@ static void *runServerCommunication(void *arg)
 	struct sockaddr_in serv_addr;
 	struct sockaddr *addr;
 	socklen_t addr_len = sizeof(*addr);
-	int sockfd,connection;
-	FILE *connectionfd;
-	char buffer[256];
-	int  n;
+	int sockfd,connectionfd;
+	const char xml_outline[] = "<tracks name='" __TITLE__ "'></tracks>";
 
 	/*
 	**	create socket
@@ -250,44 +252,68 @@ static void *runServerCommunication(void *arg)
 		/*
 		**	accept connection
 		*/
-		if ((connection = accept(sockfd,(struct sockaddr *) &addr,&addr_len)) < 0) {
+		if ((connectionfd = accept(sockfd,(struct sockaddr *) &addr,&addr_len)) < 0) {
 			perror("ERROR on accept");
 			exit(1);
 		}
 
-		if (!(connectionfd = fdopen(connection,"w+"))) {
-			perror("ERROR on fdopen");
-			exit(1);
-		}
+		/*
+		**	setup the iostream
+		*/
+		__gnu_cxx::stdio_filebuf<char> filebuf(connectionfd, std::ios::out);
+		std::ostream ofs(&filebuf);
 
 		/*
 		**	push the data to the client
 		*/
 		while (!_shutdown) {
-			if (fprintf(connectionfd,"TRACKS=%d\n",_tracks) < 0)
+			/*
+			**	create an XML document with all the tracks
+			*/
+			pugi::xml_document xml;
+			xml.load_buffer(xml_outline,sizeof(xml_outline));
+
+			/*
+			**	add the numer of tracks
+			*/
+			pugi::xml_node tracks = xml.child("tracks");
+			tracks.append_attribute("number") = _tracks;
+
+			/*
+			**	add all tracks
+			*/
+			for (int n = 0;n < _tracks;n++) {
+				pugi::xml_node node = tracks.append_child("track");
+				node.append_attribute("index") = n;
+				node.append_attribute("callsign") = _track[n].callsign;
+				node.append_attribute("positionX") = _track[n].position.getX();
+				node.append_attribute("positionY") = _track[n].position.getY();
+				node.append_attribute("positionZ") = _track[n].position.getZ();
+				node.append_attribute("speed") = _track[n].speed;
+				node.append_attribute("predictionX") = _track[n].prediction.getX();
+				node.append_attribute("predictionY") = _track[n].prediction.getY();
+				node.append_attribute("predictionZ") = _track[n].prediction.getZ();
+			}
+
+			/*
+			**	write the XML to the socket
+			*/
+			xml.save(ofs);
+			ofs << std::endl;
+			ofs.flush();
+
+			if (!ofs.good()) {
+				if (_debug)
+  					printf("saving of XML failed\n");
 				break;
-			for (n = 0;n < _tracks;n++)
-				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f\n",
-					n,
-					_track[n].callsign,
-					_track[n].position.getX(),
-					_track[n].position.getY(),
-					_track[n].position.getZ(),
-					_track[n].speed,
-					_track[n].prediction.getX(),
-					_track[n].prediction.getY(),
-					_track[n].prediction.getZ()) < 0)
-				break;
-			if (fflush(connectionfd) < 0)
-				break;
+			}
 
 			/*
 			**	wait some time
 			*/
 			usleep(SERVER_COMMUNICATION_UPDATE_RATE * USEC_PER_MSEC);
 		}
-		fclose(connectionfd);
-		close(connection);
+		close(connectionfd);
 	}
 	return NULL;
 }
