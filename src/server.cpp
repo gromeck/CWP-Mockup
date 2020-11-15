@@ -271,8 +271,11 @@ static void *runServerCommunication(void *arg)
 
 			if (fprintf(connectionfd,"TRACKS=%d\n",_tracks) < 0)
 				break;
-			for (int n = 0;n < _tracks;n++)
-				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f\n",
+			for (int n = 0;n < _tracks;n++) {
+				struct timeval now;
+
+				gettimeofday(&now,NULL);
+				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f,%lu,%lu\n",
 					n,
 					_track[n].callsign,
 					_track[n].position.getX(),
@@ -281,8 +284,10 @@ static void *runServerCommunication(void *arg)
 					_track[n].speed,
 					_track[n].prediction.getX(),
 					_track[n].prediction.getY(),
-					_track[n].prediction.getZ()) < 0)
+					_track[n].prediction.getZ(),
+					now.tv_sec,now.tv_usec) < 0)
 				break;
+			}
 			if (fflush(connectionfd) < 0)
 				break;
 

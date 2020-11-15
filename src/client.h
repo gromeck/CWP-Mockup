@@ -50,27 +50,31 @@
 #define CLIENT_LABEL_FONTSIZE           10
 
 #define CLIENT_TRACK_UPDATE_RATE        1
+
 // in ms
 #define CLIENT_TRACK_COASTING_TIMEOUT   3000
 #define CLIENT_TRACK_INVALID_TIMEOUT    10000
+#define CLIENT_TRACK_TOOOLD_TIMEOUT     1000
 
 // short term conflict alert, nm
 #define CLIENT_STCA_DISTANCE            10.0
 
 // frozen picture
-#define CLIENT_NOCONNECTION_BACKGROUND  FL_RED
-#define CLIENT_NOCONNECTION_FOREGROUND  FL_WHITE
-#define CLIENT_NOCONNECTION_WIDTH       300
-#define CLIENT_NOCONNECTION_HEIGHT      30
-#define CLIENT_NOCONNECTION_FONTFACE    FL_HELVETICA_BOLD
-#define CLIENT_NOCONNECTION_FONTSIZE    24
-#define CLIENT_NOCONNECTION_MESSAGE     " NO SERVER CONNECTION "
+#define CLIENT_NODATA_BACKGROUND        FL_RED
+#define CLIENT_NODATA_FOREGROUND        FL_WHITE
+#define CLIENT_NODATA_WIDTH             300
+#define CLIENT_NODATA_HEIGHT            30
+#define CLIENT_NODATA_FONTFACE          FL_HELVETICA_BOLD
+#define CLIENT_NODATA_FONTSIZE          24
+#define CLIENT_NODATA_MESSAGE_NODATA    " NO TRACK DATA "
+#define CLIENT_NODATA_MESSAGE_NOCONN    " NO SERVER CONNECTION "
 
 // some frontend colors
 #define CLIENT_COLOR_BACKGROUND         FL_LIGHT1
 #define CLIENT_COLOR_SYMBOL             FL_WHITE
 #define CLIENT_COLOR_LABEL_LINE         FL_GRAY
 #define CLIENT_COLOR_LABEL              FL_DARK_GREEN
+#define CLIENT_COLOR_LABEL_OLD          FL_DARK_BLUE
 #define CLIENT_COLOR_ALERT              FL_RED
 #define CLIENT_COLOR_PREDICTION         FL_WHITE
 #define CLIENT_COLOR_HISTORY            FL_WHITE
@@ -80,6 +84,7 @@ typedef struct {
     Coordinate position;
     int speed;
     Coordinate prediction;
+    struct timeval timestamp;
 } CLIENT_TRACK_UPDATE;
 
 typedef struct {

@@ -49,7 +49,7 @@
 /*
 **  some defines to layout the track file
 */
-#define TRACKS_DEFAULT      100
+#define TRACKS_DEFAULT      2
 #define TRACKS_MIN          1
 #define TRACKS_MAX          3000
 

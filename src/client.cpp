@@ -46,6 +46,8 @@
 #include "client.h"
 
 static bool _connected = false;
+static bool _receiving = false;
+static struct timeval _last_update;
 
 /****************************************************************************
 
@@ -86,6 +88,8 @@ static bool updateTrack(int idx,CLIENT_TRACK_UPDATE *track)
 	_track[idx].track = *track;
 	gettimeofday(&_track[idx].last_update,NULL);
 
+	_last_update = _track[idx].last_update;
+	_receiving = true;
 	return _track->valid;
 }
 
@@ -94,7 +98,10 @@ static bool updateTrack(int idx,CLIENT_TRACK_UPDATE *track)
 */
 static void *runClientTracking(void *arg)
 {
-	struct timeval now,costing_delta,invalid_delta;
+	struct timeval now,receiving_delta,costing_delta,invalid_delta;
+
+	receiving_delta.tv_sec = CLIENT_TRACK_COASTING_TIMEOUT / MSEC_PER_SEC;
+	receiving_delta.tv_usec = (CLIENT_TRACK_COASTING_TIMEOUT - costing_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
 
 	costing_delta.tv_sec = CLIENT_TRACK_COASTING_TIMEOUT / MSEC_PER_SEC;
 	costing_delta.tv_usec = (CLIENT_TRACK_COASTING_TIMEOUT - costing_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
@@ -102,11 +109,19 @@ static void *runClientTracking(void *arg)
 	invalid_delta.tv_usec = (CLIENT_TRACK_INVALID_TIMEOUT - invalid_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
 
 	while (!_shutdown) {
+		struct timeval delta_tv;
+
 		gettimeofday(&now,NULL);
+		timersub(&now,&_last_update,&delta_tv);
+		if (timercmp(&delta_tv,&receiving_delta,>)) {
+			/*
+			**	it looks like we did not receiving data
+			*/
+			_receiving = false;
+		}
 
 		for (int idx = 0;idx < TRACKS_MAX;idx++) {
 			if (_track[idx].valid) {
-				struct timeval delta_tv;
 
 				/*
 				**	check for coasting/invalid because of missing updates
@@ -226,7 +241,7 @@ static void *runClientCommunication(void *arg)
 				double posX,posY,posZ;
 				double preX,preY,preZ;
 
-				if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf",
+				if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf,%lu,%lu",
 						&idx,
 						&track.callsign,
 						&posX,
@@ -235,7 +250,8 @@ static void *runClientCommunication(void *arg)
 						&track.speed,
 						&preX,
 						&preY,
-						&preZ) < 0) {
+						&preZ,
+						&track.timestamp.tv_sec,&track.timestamp.tv_usec) < 0) {
 					if (_debug)
 						printf("received invalid line: %s\n",line);
 				}
@@ -311,23 +327,6 @@ public:
 		// draw the background
 		fl_draw_box(FL_FLAT_BOX,x(),y(),w(),h(),CLIENT_COLOR_BACKGROUND);
 
-		if (!_connected) {
-			/*
-			**	display the frozen message
-			*/
-			fl_font(CLIENT_NOCONNECTION_FONTFACE,CLIENT_NOCONNECTION_FONTSIZE);
-			int width = fl_width(CLIENT_NOCONNECTION_MESSAGE);
-			int height = fl_height();
-
-			fl_draw_box(FL_FLAT_BOX,
-					x() + (w() - width) / 2,y(),
-					width,height * 1.1,CLIENT_NOCONNECTION_BACKGROUND);
-			fl_color(CLIENT_NOCONNECTION_FOREGROUND);
-
-			fl_draw(CLIENT_NOCONNECTION_MESSAGE,
-				x() + (w() - width) / 2,
-				y() + height - (height - CLIENT_NOCONNECTION_FONTSIZE) / 2);
-		}
 		for (int idx = 0;idx < TRACKS_MAX;idx++) {
 			if (_track[idx].valid) {
 				/*
@@ -366,19 +365,44 @@ public:
 					// draw the label
 					char label[CLIENT_LABEL_LINES][50];
 					int linenr = 0;
+					struct timeval now;
+					struct timeval delta;
+
+					gettimeofday(&now,NULL);
+					timersub(&now,&_track[idx].track.timestamp,&delta);
+					unsigned long age = delta.tv_sec * MSEC_PER_SEC + delta.tv_usec / USEC_PER_MSEC;
 
 					fl_color(CLIENT_COLOR_LABEL_LINE);
 					fl_line(pos_x,pos_y,pos_x + CLIENT_LABEL_OFFSET_X,pos_y  + CLIENT_LABEL_OFFSET_Y);
 
 					sprintf(label[linenr++],"%s",_track[idx].track.callsign);
-					sprintf(label[linenr++],"%d",_track[idx].track.speed);
+					sprintf(label[linenr++],"%d %lu",_track[idx].track.speed,age);
 					sprintf(label[linenr++],"%d",(int) FT2FL(NM2FT(_track[idx].track.position.getZ())));
 
-					fl_color(CLIENT_COLOR_LABEL);
+					fl_color((age < CLIENT_TRACK_TOOOLD_TIMEOUT) ? CLIENT_COLOR_LABEL : CLIENT_COLOR_LABEL_OLD);
 					fl_font(CLIENT_LABEL_FONTFACE,CLIENT_LABEL_FONTSIZE);
 					for (linenr = 0;linenr < CLIENT_LABEL_LINES;linenr++)
 						fl_draw(label[linenr],pos_x + CLIENT_LABEL_OFFSET_X,pos_y + CLIENT_LABEL_OFFSET_Y + linenr * fl_height());
 				}
+			}
+
+			if (!_connected || !_receiving) {
+				/*
+				**	display the frozen message
+				*/
+				const char *message = (_connected) ? CLIENT_NODATA_MESSAGE_NODATA : CLIENT_NODATA_MESSAGE_NOCONN;
+				fl_font(CLIENT_NODATA_FONTFACE,CLIENT_NODATA_FONTSIZE);
+				int width = fl_width(message);
+				int height = fl_height();
+
+				fl_draw_box(FL_FLAT_BOX,
+						x() + (w() - width) / 2,y(),
+						width,height * 1.1,CLIENT_NODATA_BACKGROUND);
+				fl_color(CLIENT_NODATA_FOREGROUND);
+
+				fl_draw(message,
+					x() + (w() - width) / 2,
+					y() + height - (height - CLIENT_NODATA_FONTSIZE) / 2);
 			}
 		}
 
@@ -484,7 +508,7 @@ static int runClientFrontend(bool fullscreen)
 	Fl::add_timeout(1,refreshClock);
 
 	airspaceDisplay = new airspaceWidget(0,50,window->w(),window->h() - 40,"display");
-	airspaceDisplay->color((Fl_Color) 10);
+	airspaceDisplay->color(CLIENT_COLOR_BACKGROUND);
 	window->resizable(airspaceDisplay);
 
 	Fl::add_timeout((double) _refresh_rate / 1000,refreshDisplay);
