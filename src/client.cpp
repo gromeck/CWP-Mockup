@@ -62,15 +62,28 @@ static bool updateTrack(int idx,CLIENT_TRACK_UPDATE *track)
 	if (idx < 0 || idx >= TRACKS_MAX)
 		return false;
 
+	struct timeval now;
+	gettimeofday(&now,NULL);
+
 	if (_track[idx].valid) {
-		/*
-		**	if the track was valid so far, shift the history dots
-		*/
-		for (int dot = _track[idx].history_dots;dot > 0;dot--)
-			_track[idx].history[dot] = _track[idx].history[dot - 1];
-		_track[idx].history[0] = _track[idx].track.position;
-		if (_track[idx].history_dots < CLIENT_HISTORY_DOTS_MAX)
-			_track[idx].history_dots++;
+		struct timeval history_delta,delta_tv;
+
+		history_delta.tv_sec = CLIENT_TRACK_HISTORY_TIME / MSEC_PER_SEC;
+		history_delta.tv_usec = (CLIENT_TRACK_HISTORY_TIME - history_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
+
+		timersub(&now,&_track[idx].last_history_update,&delta_tv);
+
+		if (timercmp(&delta_tv,&history_delta,>)) {
+			/*
+			**	shift the history dots
+			*/
+			for (int dot = CLIENT_HISTORY_DOTS_MAX - 1;dot > 0;dot--)
+				_track[idx].history[dot] = _track[idx].history[dot - 1];
+			_track[idx].history[0] = _track[idx].track.position;
+			if (_track[idx].history_dots < CLIENT_HISTORY_DOTS_MAX)
+				_track[idx].history_dots++;
+			_track[idx].last_history_update = now;
+		}
 	}
 	else {
 		/*
@@ -86,7 +99,7 @@ static bool updateTrack(int idx,CLIENT_TRACK_UPDATE *track)
 	_track[idx].valid = true;
 	_track[idx].coasting = false;
 	_track[idx].track = *track;
-	gettimeofday(&_track[idx].last_update,NULL);
+	_track[idx].last_update = now;
 
 	_last_update = _track[idx].last_update;
 	_receiving = true;
@@ -102,7 +115,6 @@ static void *runClientTracking(void *arg)
 
 	receiving_delta.tv_sec = CLIENT_TRACK_COASTING_TIMEOUT / MSEC_PER_SEC;
 	receiving_delta.tv_usec = (CLIENT_TRACK_COASTING_TIMEOUT - costing_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
-
 	costing_delta.tv_sec = CLIENT_TRACK_COASTING_TIMEOUT / MSEC_PER_SEC;
 	costing_delta.tv_usec = (CLIENT_TRACK_COASTING_TIMEOUT - costing_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
 	invalid_delta.tv_sec = CLIENT_TRACK_INVALID_TIMEOUT / MSEC_PER_SEC;

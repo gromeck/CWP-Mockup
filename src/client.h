@@ -38,7 +38,10 @@
 #define CLIENT_WINDOW_WIDTH_MIN	        800
 #define CLIENT_WINDOW_HEIGHT_MIN        600
 
+// number of history dots
 #define CLIENT_HISTORY_DOTS_MAX         10
+// time between the history dots in ms
+#define CLIENT_TRACK_HISTORY_TIME       10000
 
 // all items in px
 #define CLIENT_SYMBOL_WIDTH             15
@@ -93,6 +96,7 @@ typedef struct {
     bool stca;
     int history_dots;
     Coordinate history[CLIENT_HISTORY_DOTS_MAX];
+    struct timeval last_history_update;
     struct timeval last_update;
     CLIENT_TRACK_UPDATE track;
 } CLIENT_TRACK;
