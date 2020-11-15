@@ -1,6 +1,6 @@
 	install autotools
 
-# apt install autoconf automake libncurses-dev
+# apt -y install libfltk1.3-dev autoconf automake make g++
 
 	build the client software
 
