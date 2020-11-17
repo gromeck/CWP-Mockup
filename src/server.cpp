@@ -36,6 +36,7 @@
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Int_Input.H>
 #include <FL/Fl_Button.H>
+#include <FL/Fl_Return_Button.H>
 #include <FL/Fl_Box.H>
 #include <FL/fl_ask.H>
 #include "common.h"
@@ -322,7 +323,7 @@ static void *runServerCommunication(void *arg)
 static Fl_Double_Window* window;
 static Fl_Box *numTracksLabel;
 static Fl_Int_Input *numTracksInput;
-static Fl_Button *setButton;
+static Fl_Return_Button *setButton;
 
 static void updateNumTracksInput(int tracks)
 {
@@ -355,7 +356,7 @@ static int runServerFrontend(void)
 	numTracksInput->maximum_size(5);
 	updateNumTracksInput(_new_tracks);
 
-	setButton = new Fl_Button(10,80,280,30,"Set");
+	setButton = new Fl_Return_Button(10,80,280,30,"Set");
 	setButton->callback(clickedSetButton);
 
 	window->end();

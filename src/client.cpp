@@ -39,6 +39,7 @@
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Int_Input.H>
 #include <FL/Fl_Button.H>
+#include <FL/Fl_Return_Button.H>
 #include <FL/Fl_Box.H>
 #include <FL/fl_ask.H>
 #include <FL/fl_draw.H>
@@ -430,7 +431,7 @@ static Fl_Double_Window* window;
 static Fl_Box *refreshRateLabel;
 static Fl_Box *clockWidget;
 static Fl_Int_Input *refreshRateInput;
-static Fl_Button *setButton;
+static Fl_Return_Button *setButton;
 static airspaceWidget *airspaceDisplay;
 
 /*
@@ -507,7 +508,7 @@ static int runClientFrontend(bool fullscreen)
 	refreshRateInput->maximum_size(5);
 	updateRefreshRateInput(_refresh_rate);
 
-	setButton = new Fl_Button(220,10,80,30,"Set");
+	setButton = new Fl_Return_Button(220,10,80,30,"Set");
 	setButton->callback(clickedSetButton);
 
 	clockWidget = new Fl_Box(CLIENT_WINDOW_WIDTH_MIN - CLIENT_CLOCK_WIDTH - 10,10,CLIENT_CLOCK_WIDTH,CLIENT_CLOCK_HEIGHT,"");
