@@ -195,6 +195,10 @@ static void *runServerTraffic(void *arg)
 		*/
 		usleep(SERVER_TRACK_UPDATE_RATE * USEC_PER_MSEC);
 	}
+
+	if (_debug)
+		printf("*** shutting down thread runServerTraffic()\n");
+
 	return NULL;
 }
 
@@ -311,7 +315,7 @@ static void *runServerCommunication(void *arg)
 		}
 	}
 	if (_debug)
-		printf("shuttding down thread runServerCommunication()");
+		printf("*** shutting down thread runServerCommunication()\n");
 	return NULL;
 }
 
@@ -344,6 +348,20 @@ static void clickedSetButton(Fl_Widget *widget)
 	updateNumTracksInput(_new_tracks = tracks);
 }
 
+/*
+**	handle the shutdown of the frontend
+*/
+static void handleShutdown(void *)
+{
+	if (_shutdown)
+		window->hide();
+	// schedule the next refresh
+	Fl::add_timeout(0.1,handleShutdown);
+}
+
+/*
+**	handle the frontend generation
+*/
 static int runServerFrontend(void)
 {
 	window = new Fl_Double_Window(300,120,"Server " __TITLE__);
@@ -358,6 +376,9 @@ static int runServerFrontend(void)
 
 	setButton = new Fl_Return_Button(10,80,280,30,"Set");
 	setButton->callback(clickedSetButton);
+
+	// handle shutdown
+	handleShutdown(NULL);
 
 	window->end();
 	window->show();

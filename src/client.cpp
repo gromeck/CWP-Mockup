@@ -463,6 +463,8 @@ static void refreshDisplay(void *)
 
 	// schedule the next refresh
 	Fl::add_timeout((double) _refresh_rate / 1000,refreshDisplay);
+	if (_shutdown)
+		window->hide();
 }
 
 /*
@@ -488,6 +490,17 @@ static void clickedSetButton(Fl_Widget *widget)
 	if (_refresh_rate > CLIENT_REFRESH_RATE_MAX)
 		_refresh_rate = CLIENT_REFRESH_RATE_MAX;
 	updateRefreshRateInput(_refresh_rate);
+}
+
+/*
+**	handle the shutdown of the frontend
+*/
+static void handleShutdown(void *)
+{
+	if (_shutdown)
+		window->hide();
+	// schedule the next refresh
+	Fl::add_timeout(0.1,handleShutdown);
 }
 
 /*
@@ -525,6 +538,9 @@ static int runClientFrontend(bool fullscreen)
 	window->resizable(airspaceDisplay);
 
 	Fl::add_timeout((double) _refresh_rate / 1000,refreshDisplay);
+
+	// handle shutdown
+	handleShutdown(NULL);
 
 	window->end();
 	window->show();
