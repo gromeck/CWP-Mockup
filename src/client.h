@@ -26,6 +26,11 @@
 
 #include "coordinate.h"
 
+#define CLIENT_SYSINFO_WIDTH            150
+#define CLIENT_SYSINFO_HEIGHT           12
+#define CLIENT_SYSINFO_COLOR            FL_BLACK
+#define CLIENT_SYSINFO_FONTFACE         FL_SCREEN
+
 #define CLIENT_CLOCK_WIDTH              150
 #define CLIENT_CLOCK_HEIGHT             (CLIENT_CLOCK_WIDTH * 2 / 10)
 #define CLIENT_CLOCK_COLOR              FL_DARK2

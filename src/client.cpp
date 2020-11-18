@@ -26,13 +26,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/sysinfo.h>
 #include <unistd.h>
+#include <limits.h>
 #include <math.h>
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
@@ -472,9 +475,10 @@ public:
 */
 static Fl_Double_Window* window;
 static Fl_Box *refreshRateLabel;
-static Fl_Box *clockWidget;
 static Fl_Int_Input *refreshRateInput;
 static Fl_Return_Button *setButton;
+static Fl_Box *sysinfoWidget;
+static Fl_Box *clockWidget;
 static airspaceWidget *airspaceDisplay;
 
 /*
@@ -547,6 +551,39 @@ static void handleShutdown(void *)
 }
 
 /*
+**	gather information about cpu cores and model name
+*/
+static int getCpuInfo(char **model_name)
+{
+	FILE *cpuinfo = fopen("/proc/cpuinfo","rb");
+#define LINE_BUFFER_SIZE	1000
+	char buffer[LINE_BUFFER_SIZE];
+	int cores = 0;
+	char *line;
+
+	*model_name = NULL;
+	while (line = fgets(buffer,sizeof(buffer),cpuinfo)) {
+		//printf("cores: %d  model name=%s\n",cores,*model_name);
+		//puts(line);
+		if (strncmp(line,"processor",9) == 0)
+			++cores;
+		if (strncmp(line,"model name",10) == 0 && !*model_name) {
+			if (line = strchr(line,':')) {
+				*model_name = strdup(line + 2);
+				char *s = *model_name;
+				while (*s && *s != '\n' && *s != '\r')
+					s++;
+				*s = '\0';
+			}
+		}
+	}
+	//printf("cores: %d  model name=%s\n",cores,*model_name);
+
+	fclose(cpuinfo);
+	return cores;
+}
+
+/*
 **	handle the frontend generation
 */
 static int runClientFrontend(bool fullscreen)
@@ -566,6 +603,22 @@ static int runClientFrontend(bool fullscreen)
 
 	setButton = new Fl_Return_Button(220,10,80,30,"Set");
 	setButton->callback(clickedSetButton);
+
+	char *model_name = NULL;
+	int cores = getCpuInfo(&model_name);
+	char hostname[HOST_NAME_MAX];
+	gethostname(hostname,sizeof(hostname));
+
+	sysinfoWidget = new Fl_Box(330,10,CLIENT_SYSINFO_WIDTH,CLIENT_SYSINFO_HEIGHT,"");
+	sysinfoWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+	sysinfoWidget->color(FL_BACKGROUND_COLOR);
+	sysinfoWidget->box(FL_FLAT_BOX);
+	sysinfoWidget->labelcolor(CLIENT_SYSINFO_COLOR);
+	sysinfoWidget->labelfont(CLIENT_SYSINFO_FONTFACE);
+	sysinfoWidget->labelsize(CLIENT_SYSINFO_HEIGHT);
+	static char buffer[10 * HOST_NAME_MAX];
+	sprintf(buffer,"%s\n%dx %s",hostname,cores,model_name);
+	sysinfoWidget->label(buffer);
 
 	clockWidget = new Fl_Box(CLIENT_WINDOW_WIDTH_MIN - CLIENT_CLOCK_WIDTH - 10,10,CLIENT_CLOCK_WIDTH,CLIENT_CLOCK_HEIGHT,"");
 	clockWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_CENTER);
