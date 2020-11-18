@@ -409,25 +409,25 @@ public:
 						fl_draw(label[linenr],pos_x + CLIENT_LABEL_OFFSET_X,pos_y + CLIENT_LABEL_OFFSET_Y + linenr * fl_height());
 				}
 			}
+		}
 
-			if (!_connected || !_receiving) {
-				/*
-				**	display the frozen message
-				*/
-				const char *message = (_connected) ? CLIENT_NODATA_MESSAGE_NODATA : CLIENT_NODATA_MESSAGE_NOCONN;
-				fl_font(CLIENT_NODATA_FONTFACE,CLIENT_NODATA_FONTSIZE);
-				int width = fl_width(message);
-				int height = fl_height();
+		if (!_connected || !_receiving) {
+			/*
+			**	display the frozen message
+			*/
+			const char *message = (_connected) ? CLIENT_NODATA_MESSAGE_NODATA : CLIENT_NODATA_MESSAGE_NOCONN;
+			fl_font(CLIENT_NODATA_FONTFACE,CLIENT_NODATA_FONTSIZE);
+			int width = fl_width(message);
+			int height = fl_height();
 
-				fl_draw_box(FL_FLAT_BOX,
-						x() + (w() - width) / 2,y(),
-						width,height * 1.1,CLIENT_NODATA_BACKGROUND);
-				fl_color(CLIENT_NODATA_FOREGROUND);
+			fl_draw_box(FL_FLAT_BOX,
+					x() + (w() - width) / 2,y(),
+					width,height * 1.1,CLIENT_NODATA_BACKGROUND);
+			fl_color(CLIENT_NODATA_FOREGROUND);
 
-				fl_draw(message,
-					x() + (w() - width) / 2,
-					y() + height - (height - CLIENT_NODATA_FONTSIZE) / 2);
-			}
+			fl_draw(message,
+				x() + (w() - width) / 2,
+				y() + height - (height - CLIENT_NODATA_FONTSIZE) / 2);
 		}
 
 		// compute some statistic information
