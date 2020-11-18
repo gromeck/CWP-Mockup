@@ -501,13 +501,13 @@ static void refreshClock(void *)
 */
 static void refreshDisplay(void *)
 {
-	//	do the refresh
-	airspaceDisplay->redraw();
-
 	// schedule the next refresh
 	Fl::add_timeout((double) _refresh_rate / 1000,refreshDisplay);
 	if (_shutdown)
 		window->hide();
+
+	//	do the refresh
+	airspaceDisplay->redraw();
 }
 
 /*
