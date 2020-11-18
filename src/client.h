@@ -72,6 +72,13 @@
 #define CLIENT_NODATA_MESSAGE_NODATA    " NO TRACK DATA "
 #define CLIENT_NODATA_MESSAGE_NOCONN    " NO SERVER CONNECTION "
 
+// information
+#define CLIENT_STATS_DISPPLAY_RATE      1.0 // seconds
+#define CLIENT_STATS_FOREGROUND         FL_WHITE
+#define CLIENT_STATS_BACKGROUND         FL_DARK2
+#define CLIENT_STATS_FONTFACE           FL_HELVETICA
+#define CLIENT_STATS_FONTSIZE           16
+
 // some frontend colors
 #define CLIENT_COLOR_BACKGROUND         FL_LIGHT1
 #define CLIENT_COLOR_SYMBOL             FL_WHITE

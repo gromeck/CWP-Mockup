@@ -324,6 +324,12 @@ static int _refresh_rate = CLIENT_REFRESH_RATE_DEFAULT;
 
 class airspaceWidget: public Fl_Box
 {
+private:
+	struct timeval last_info = { 0, 0 };
+	int frames_between_info = 0;
+	double rendering_time = 0;
+	char info[1000];
+
 public:
 	airspaceWidget(int x, int y, int w, int h, const char *label) : Fl_Box::Fl_Box(x, y, w, h, label)
 	{
@@ -334,17 +340,22 @@ public:
 	{
 		//printf("airspaceWidget::draw(): ...\n");
 
+		struct timeval start_rendering;
+		gettimeofday(&start_rendering,NULL);
+
 		// set clipping to the widget area
 		fl_push_clip(x(),y(),w(),h());
 
 		// draw the background
 		fl_draw_box(FL_FLAT_BOX,x(),y(),w(),h(),CLIENT_COLOR_BACKGROUND);
 
+		int tracks = 0;
 		for (int idx = 0;idx < TRACKS_MAX;idx++) {
 			if (_track[idx].valid) {
 				/*
 				**	compute the position on the screen within the widget
 				*/
+				tracks++;
 #define MAPX2SCR(mapx)		(x() + (mapx) / MAP_WIDTH  * w())
 #define MAPY2SCR(mapy)		(y() + (mapy) / MAP_HEIGHT * h())
 
@@ -418,6 +429,38 @@ public:
 					y() + height - (height - CLIENT_NODATA_FONTSIZE) / 2);
 			}
 		}
+
+		// compute some statistic information
+		struct timeval now,delta_tv;
+		double delta,fps;
+
+		gettimeofday(&now,NULL);
+
+		timersub(&now,&start_rendering,&delta_tv);
+		this->rendering_time += delta_tv.tv_sec + (double) delta_tv.tv_usec / USEC_PER_MSEC / MSEC_PER_SEC;
+
+		timersub(&now,&this->last_info,&delta_tv);
+		delta = delta_tv.tv_sec + (double) delta_tv.tv_usec / USEC_PER_MSEC / MSEC_PER_SEC;
+		this->frames_between_info++;
+
+		if (delta >= CLIENT_STATS_DISPPLAY_RATE) {
+			fps = (delta > 0) ? (double) this->frames_between_info / delta : 0;
+			sprintf(this->info," Tracks:%d  Rendering Time:%.3fms  Refresh Rate:%.1fms  FPS:%.1f ",
+					tracks,this->rendering_time / this->frames_between_info * MSEC_PER_SEC,
+					MSEC_PER_SEC / fps,fps);
+			this->rendering_time = 0;
+			this->frames_between_info = 0;
+			this->last_info = now;
+		}
+
+		/*
+		**	display the statistics
+		*/
+		fl_font(CLIENT_STATS_FONTFACE,CLIENT_STATS_FONTSIZE);
+		int width = fl_width(this->info);
+		fl_draw_box(FL_FLAT_BOX,x(),y() + h() - 2 * fl_height(),width,2 * fl_height(),CLIENT_STATS_BACKGROUND);
+		fl_color(CLIENT_STATS_FOREGROUND);
+		fl_draw(this->info,x(),y() + h() - fl_height());
 
 		// pop the clipping again
 		fl_pop_clip();
