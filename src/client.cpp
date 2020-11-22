@@ -112,6 +112,31 @@ static bool updateTrack(int idx,CLIENT_TRACK_UPDATE *track)
 }
 
 /*
+**	find the closest track at the given position -- in any case it has to be
+**	within a radius of CLIENT_SELECT_MINDISTANCE
+*/
+static CLIENT_TRACK *lookupTrack(double x,double y)
+{
+	Coordinate position = { x, y, 0 };
+	double found_distance;
+	int found_idx = -1;
+
+	for (int idx = 0;idx < TRACKS_MAX;idx++) {
+		if (_track[idx].valid) {
+			double distance = _track[idx].track.position.getDistanceXY(position);
+
+			if (distance < CLIENT_SELECT_MINDISTANCE && (found_idx < 0 || distance < found_distance)) {
+				found_idx = idx;
+				found_distance = distance;
+				if (_debug)
+					printf("idx=%d  distance=%.1f\n",idx,distance);
+			}
+		}
+	}
+	return (found_idx >= 0) ? &_track[found_idx] : NULL;
+}
+
+/*
 **	do some book-keeping
 */
 static void *runClientTracking(void *arg)
@@ -167,7 +192,7 @@ static void *runClientTracking(void *arg)
 				_track[idx].stca = stca;
 			}
 		}
-		sleep(CLIENT_TRACK_UPDATE_RATE);
+		usleep(CLIENT_TRACK_UPDATE_RATE * USEC_PER_MSEC);
 	}
 	return NULL;
 }
@@ -324,7 +349,63 @@ static void *runClientCommunication(void *arg)
 
 ****************************************************************************/
 
+/*
+**	the used widgets
+*/
+static Fl_Double_Window* mainWindow;
+static Fl_Box *mainWindowRefreshRateLabel;
+static Fl_Int_Input *mainWindowRefreshRateInput;
+static Fl_Return_Button *mainWindowSetButton;
+static Fl_Button *mainWindowResetPanAndZoomButton;
+static Fl_Box *mainWindowSysinfoWidget;
+static Fl_Box *mainWindowClockWidget;
+
+static Fl_Double_Window* trackInfoWindow;
+static Fl_Box *trackInfoWindowCallsignLabel;
+static Fl_Box *trackInfoWindowCallsignInfo;
+static Fl_Box *trackInfoWindowPositionLabel;
+static Fl_Box *trackInfoWindowPositionInfo;
+static Fl_Box *trackInfoWindowHeightLabel;
+static Fl_Box *trackInfoWindowHeightInfo;
+static Fl_Box *trackInfoWindowFlightLevelLabel;
+static Fl_Box *trackInfoWindowFlightLevelInfo;
+static Fl_Box *trackInfoWindowSpeedLabel;
+static Fl_Box *trackInfoWindowSpeedInfo;
+
 static int _refresh_rate = CLIENT_REFRESH_RATE_DEFAULT;
+
+/*
+**	open the track info window
+*/
+static void openTrackInfoWindow(CLIENT_TRACK *track)
+{
+#define BUFFER_SIZE	25
+	static char buffer_position[BUFFER_SIZE];
+	static char buffer_height[BUFFER_SIZE];
+	static char buffer_flightlevel[BUFFER_SIZE];
+	static char buffer_speed[BUFFER_SIZE];
+#undef BUFFER_SIZE
+
+	if (track) {
+		trackInfoWindowCallsignInfo->label(track->track.callsign);
+
+		sprintf(buffer_position,"%.1f/%.1f",track->track.position.getX(),track->track.position.getY());
+		trackInfoWindowPositionInfo->label(buffer_position);
+#if 1
+		sprintf(buffer_height,"%.1fft",NM2FT(track->track.position.getZ()));
+		trackInfoWindowHeightInfo->label(buffer_height);
+
+		sprintf(buffer_flightlevel,"%d",(int) FT2FL(NM2FT(track->track.position.getZ())));
+		trackInfoWindowFlightLevelInfo->label(buffer_flightlevel);
+
+		sprintf(buffer_speed,"%dkn",track->track.speed);
+		trackInfoWindowSpeedInfo->label(buffer_speed);
+#endif
+		trackInfoWindow->show();
+	}
+	else
+		trackInfoWindow->hide();
+}
 
 class airspaceWidget: public Fl_Box
 {
@@ -352,6 +433,7 @@ public:
 	virtual int handle(int event)
 	{
 		int rc = 0;
+		CLIENT_TRACK *track = NULL;
 
 		//printf("handle: %s (%d)\n",fl_eventnames[event],event);
 
@@ -386,6 +468,20 @@ public:
 				this->redraw();
 				rc = 1;
 				break;
+			case FL_RELEASE:
+					/*
+					**	user release the button (after a press) on a target
+					*/
+					if (_debug)
+						printf("handle: %s(%d): x=%d  y=%d  button=%d\n",
+							fl_eventnames[event],event,
+							Fl::event_x(),Fl::event_y(),
+							Fl::event_button());
+					/*
+					**	show some information about the selected track
+					*/
+					openTrackInfoWindow(lookupTrack(this->mapScreenToX(Fl::event_x()),this->mapScreenToY(Fl::event_y())));
+					break;
 			case FL_MOUSEWHEEL:
 				/*
 				**	zoom with the mouse wheel
@@ -544,6 +640,7 @@ public:
 
 		// draw the map boarders
 		fl_color(CLIENT_COLOR_MAP_BORDER);
+		fl_line_style(0);
 		fl_rect(
 			this->mapXToScreen(0),
 			this->mapYToScreen(0),
@@ -562,28 +659,37 @@ public:
 				int pos_y = this->mapYToScreen(_track[idx].track.position.getY());
 
 				// draw the symbol
-				fl_color(CLIENT_COLOR_SYMBOL);
+				fl_color(CLIENT_SYMBOL_COLOR);
+				fl_line_style(FL_SOLID,CLIENT_SYMBOL_THICKNESS,NULL);
 				fl_loop(pos_x,pos_y - CLIENT_SYMBOL_HEIGHT / 2,
 					pos_x - CLIENT_SYMBOL_WIDTH / 2,pos_y + CLIENT_SYMBOL_HEIGHT / 2,
 					pos_x + CLIENT_SYMBOL_WIDTH / 2,pos_y + CLIENT_SYMBOL_HEIGHT / 2);
 
 				// draw history dots
-				fl_color(CLIENT_COLOR_HISTORY);
+				fl_color(CLIENT_HISTORY_COLOR);
 				for (int dot = 0;dot < _track[idx].history_dots;dot++)
-					fl_point(
-						this->mapXToScreen(_track[idx].history[dot].getX()),
-						this->mapYToScreen(_track[idx].history[dot].getY()));
+					if (CLIENT_HISTORY_THICKNESS > 1)
+						fl_draw_box(FL_FLAT_BOX,
+							this->mapXToScreen(_track[idx].history[dot].getX()) - CLIENT_HISTORY_THICKNESS / 2,
+							this->mapYToScreen(_track[idx].history[dot].getY()) - CLIENT_HISTORY_THICKNESS / 2,
+							CLIENT_HISTORY_THICKNESS,CLIENT_HISTORY_THICKNESS,CLIENT_HISTORY_COLOR);
+					else
+						fl_point(
+							this->mapXToScreen(_track[idx].history[dot].getX()),
+							this->mapYToScreen(_track[idx].history[dot].getY()));
 
 				// draw red circle if another aircraft is close
 				if (_track[idx].stca) {
-					fl_color(CLIENT_COLOR_ALERT);
+					fl_color(CLIENT_ALERT_LINE_COLOR);
+					fl_line_style(FL_SOLID,CLIENT_ALERT_LINE_THICKNESS,NULL);
 					fl_circle(pos_x,pos_y,
 						this->mapWToScreen(CLIENT_STCA_DISTANCE));
 				}
 
 				if (!_track[idx].coasting) {
 					// draw prediction line
-					fl_color(CLIENT_COLOR_PREDICTION);
+					fl_color(CLIENT_PREDICTION_LINE_COLOR);
+					fl_line_style(FL_SOLID,CLIENT_PREDICTION_LINE_THICKNESS,NULL);
 					fl_line(pos_x,pos_y,
 							this->mapXToScreen(_track[idx].track.prediction.getX()),
 							this->mapYToScreen(_track[idx].track.prediction.getY()));
@@ -598,18 +704,22 @@ public:
 					timersub(&now,&_track[idx].track.timestamp,&delta);
 					unsigned long age = delta.tv_sec * MSEC_PER_SEC + delta.tv_usec / USEC_PER_MSEC;
 
-					fl_color(CLIENT_COLOR_LABEL_LINE);
+					fl_color(CLIENT_LABEL_LINE_COLOR);
+					fl_line_style(FL_SOLID,CLIENT_LABEL_LINE_THICKNESS,NULL);
 					fl_line(pos_x,pos_y,pos_x + CLIENT_LABEL_OFFSET_X,pos_y  + CLIENT_LABEL_OFFSET_Y);
 
 					sprintf(label[linenr++],"%s",_track[idx].track.callsign);
 					sprintf(label[linenr++],"%d %lu",_track[idx].track.speed,age);
 					sprintf(label[linenr++],"%d",(int) FT2FL(NM2FT(_track[idx].track.position.getZ())));
 
-					fl_color((age < CLIENT_TRACK_TOOOLD_TIMEOUT) ? CLIENT_COLOR_LABEL : CLIENT_COLOR_LABEL_OLD);
+					fl_color((age < CLIENT_TRACK_TOOOLD_TIMEOUT) ? CLIENT_LABEL_COLOR : CLIENT_LABEL_COLOR_OLD);
 					fl_font(CLIENT_LABEL_FONTFACE,CLIENT_LABEL_FONTSIZE);
 					for (linenr = 0;linenr < CLIENT_LABEL_LINES;linenr++)
 						fl_draw(label[linenr],pos_x + CLIENT_LABEL_OFFSET_X,pos_y + CLIENT_LABEL_OFFSET_Y + linenr * fl_height());
 				}
+
+				// reset the line style
+				fl_line_style(0);
 			}
 		}
 
@@ -660,33 +770,25 @@ public:
 		*/
 		fl_font(CLIENT_STATS_FONTFACE,CLIENT_STATS_FONTSIZE);
 		int width = fl_width(this->info);
-		fl_draw_box(FL_FLAT_BOX,x(),y() + h() - 2 * fl_height(),width,2 * fl_height(),CLIENT_STATS_BACKGROUND);
+		fl_draw_box(FL_FLAT_BOX,x(),y() + h() - fl_height(),width,fl_height(),CLIENT_STATS_BACKGROUND);
 		fl_color(CLIENT_STATS_FOREGROUND);
-		fl_draw(this->info,x(),y() + h() - fl_height());
+		fl_draw(this->info,x(),y() + h() - (fl_height() - CLIENT_STATS_FONTSIZE));
 
 		// pop the clipping again
 		fl_pop_clip();
 	}
 };
 
-/*
-**	the used widgets
-*/
-static Fl_Double_Window* window;
-static Fl_Box *refreshRateLabel;
-static Fl_Int_Input *refreshRateInput;
-static Fl_Return_Button *setButton;
-static Fl_Button *resetPanAndZoomButton;
-static Fl_Box *sysinfoWidget;
-static Fl_Box *clockWidget;
-static airspaceWidget *airspaceDisplay;
+static airspaceWidget *mainWindowAirspaceDisplay;
 
 /*
 **	force the redraw of the airspace
 */
 static void refreshClock(void *)
 {
-	static char buffer[10];
+#define BUFFER_SIZE	10
+	static char buffer[BUFFER_SIZE];
+#undef BUFFER_SIZE
 	time_t now;
 	struct tm * timeinfo;
 
@@ -694,10 +796,10 @@ static void refreshClock(void *)
 	timeinfo = localtime(&now);
 	sprintf(buffer,"%02d:%02d:%02d",
 			timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
-	clockWidget->label(buffer);
+	mainWindowClockWidget->label(buffer);
 
 	// schedule the next refresh
-	Fl::add_timeout(1,refreshClock);
+	Fl::repeat_timeout(1,refreshClock);
 }
 
 /*
@@ -706,12 +808,14 @@ static void refreshClock(void *)
 static void refreshDisplay(void *)
 {
 	// schedule the next refresh
-	Fl::add_timeout((double) _refresh_rate / 1000,refreshDisplay);
-	if (_shutdown)
-		window->hide();
+	Fl::repeat_timeout((double) _refresh_rate / MSEC_PER_SEC,refreshDisplay);
+	if (_shutdown) {
+		trackInfoWindow->hide();
+		mainWindow->hide();
+	}
 
 	//	do the refresh
-	airspaceDisplay->redraw();
+	mainWindowAirspaceDisplay->redraw();
 }
 
 /*
@@ -719,10 +823,12 @@ static void refreshDisplay(void *)
 */
 static void updateRefreshRateInput(int refresh_rate)
 {
-	char buffer[10];
+#define BUFFER_SIZE	10
+	static char buffer[BUFFER_SIZE];
+#undef BUFFER_SIZE
 
 	sprintf(buffer,"%d",refresh_rate);
-	refreshRateInput->value(buffer);
+	mainWindowRefreshRateInput->value(buffer);
 }
 
 /*
@@ -730,7 +836,7 @@ static void updateRefreshRateInput(int refresh_rate)
 */
 static void clickedSetButton(Fl_Widget *widget)
 {
-	_refresh_rate = atoi(refreshRateInput->value());
+	_refresh_rate = atoi(mainWindowRefreshRateInput->value());
 
 	if (_refresh_rate < CLIENT_REFRESH_RATE_MIN)
 		_refresh_rate = CLIENT_REFRESH_RATE_MIN;
@@ -744,10 +850,10 @@ static void clickedSetButton(Fl_Widget *widget)
 */
 static void clickedResetPanAndZoomButton(Fl_Widget *widget)
 {
-	airspaceDisplay->setScreenOffsetX(0);
-	airspaceDisplay->setScreenOffsetY(0);
-	airspaceDisplay->mapZoomReset();
-	airspaceDisplay->redraw();
+	mainWindowAirspaceDisplay->setScreenOffsetX(0);
+	mainWindowAirspaceDisplay->setScreenOffsetY(0);
+	mainWindowAirspaceDisplay->mapZoomReset();
+	mainWindowAirspaceDisplay->redraw();
 }
 
 /*
@@ -755,10 +861,13 @@ static void clickedResetPanAndZoomButton(Fl_Widget *widget)
 */
 static void handleShutdown(void *)
 {
-	if (_shutdown)
-		window->hide();
+	if (_shutdown) {
+		trackInfoWindow->hide();
+		mainWindow->hide();
+	}
+
 	// schedule the next refresh
-	Fl::add_timeout(0.1,handleShutdown);
+	Fl::repeat_timeout(0.1,handleShutdown);
 }
 
 /*
@@ -767,8 +876,9 @@ static void handleShutdown(void *)
 static int getCpuInfo(char **model_name)
 {
 	FILE *cpuinfo = fopen("/proc/cpuinfo","rb");
-#define LINE_BUFFER_SIZE	1000
-	char buffer[LINE_BUFFER_SIZE];
+#define BUFFER_SIZE	1000
+	static char buffer[BUFFER_SIZE];
+#undef BUFFER_SIZE
 	int cores = 0;
 	char *line;
 
@@ -795,66 +905,130 @@ static int getCpuInfo(char **model_name)
 }
 
 /*
+**	this callback is called upon closing the main main window
+*/
+static void callbackOnMainWindowClose(Fl_Widget *widget, void *)
+{
+	// also close the trackinfo
+	trackInfoWindow->hide();
+	mainWindow->hide();
+}
+
+/*
 **	handle the frontend generation
 */
 static int runClientFrontend(bool fullscreen)
 {
-	window = new Fl_Double_Window(CLIENT_WINDOW_WIDTH_MIN,CLIENT_WINDOW_HEIGHT_MIN,"Client " __TITLE__);
-	window->size_range(CLIENT_WINDOW_WIDTH_MIN,CLIENT_WINDOW_HEIGHT_MIN);
-	if (fullscreen)
-		window->fullscreen();
 
-	refreshRateLabel = new Fl_Box(10,15,280,30,"Refresh Rate [ms]:");
-	refreshRateLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+	/*
+	**	create the main window
+	*/
+	{
+		int x = CLIENT_WIDGET_BORDER,y = CLIENT_WIDGET_BORDER, w = 100,h = 30;
 
-	refreshRateInput = new Fl_Int_Input(150,10,60,30,"");
-	refreshRateInput->color((Fl_Color) 55);
-	refreshRateInput->maximum_size(5);
-	updateRefreshRateInput(_refresh_rate);
+		mainWindow = new Fl_Double_Window(CLIENT_MAIN_WINDOW_WIDTH_MIN,CLIENT_MAIN_WINDOW_HEIGHT_MIN,"Client " __TITLE__);
+		mainWindow->size_range(CLIENT_MAIN_WINDOW_WIDTH_MIN,CLIENT_MAIN_WINDOW_HEIGHT_MIN);
+		if (fullscreen)
+			mainWindow->fullscreen();
 
-	setButton = new Fl_Return_Button(220,10,80,30,"Set");
-	setButton->callback(clickedSetButton);
+		{
+			// top banner
+			Fl_Group *upperGroup = new Fl_Group(0,0,CLIENT_MAIN_WINDOW_WIDTH_MIN,CLIENT_MAIN_WINDOW_BANNER_HEIGHT);
+			upperGroup->begin();
 
-	resetPanAndZoomButton = new Fl_Button(310,10,160,30,"Reset Pan && Zoom");
-	resetPanAndZoomButton->callback(clickedResetPanAndZoomButton);
+			mainWindowRefreshRateLabel = new Fl_Box(x,y,w = 140,h,"Refresh Rate [ms]:");
+			mainWindowRefreshRateLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_CENTER);
 
-	char *model_name = NULL;
-	int cores = getCpuInfo(&model_name);
-	char hostname[HOST_NAME_MAX];
-	gethostname(hostname,sizeof(hostname));
+			mainWindowRefreshRateInput = new Fl_Int_Input(x += w + CLIENT_WIDGET_BORDER,y,w = 60,h,"");
+			mainWindowRefreshRateInput->color((Fl_Color) 55);
+			mainWindowRefreshRateInput->maximum_size(5);
+			updateRefreshRateInput(_refresh_rate);
 
-	sysinfoWidget = new Fl_Box(480,10,CLIENT_SYSINFO_WIDTH,CLIENT_SYSINFO_HEIGHT,"");
-	sysinfoWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
-	sysinfoWidget->color(FL_BACKGROUND_COLOR);
-	sysinfoWidget->box(FL_FLAT_BOX);
-	sysinfoWidget->labelcolor(CLIENT_SYSINFO_COLOR);
-	sysinfoWidget->labelfont(CLIENT_SYSINFO_FONTFACE);
-	sysinfoWidget->labelsize(CLIENT_SYSINFO_HEIGHT);
-	static char buffer[10 * HOST_NAME_MAX];
-	sprintf(buffer,"%s\n%dx %s",hostname,cores,model_name);
-	sysinfoWidget->label(buffer);
+			mainWindowSetButton = new Fl_Return_Button(x += w + CLIENT_WIDGET_BORDER,y,w = 80,h,"Set");
+			mainWindowSetButton->callback(clickedSetButton);
 
-	clockWidget = new Fl_Box(CLIENT_WINDOW_WIDTH_MIN - CLIENT_CLOCK_WIDTH - 10,10,CLIENT_CLOCK_WIDTH,CLIENT_CLOCK_HEIGHT,"");
-	clockWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_CENTER);
-	clockWidget->color(FL_BACKGROUND_COLOR);
-	clockWidget->box(FL_FLAT_BOX);
-	clockWidget->labelcolor(CLIENT_CLOCK_COLOR);
-	clockWidget->labelfont(CLIENT_CLOCK_FONTFACE);
-	clockWidget->labelsize(CLIENT_CLOCK_HEIGHT);
-	Fl::add_timeout(1,refreshClock);
+			mainWindowResetPanAndZoomButton = new Fl_Button(x += w + CLIENT_WIDGET_BORDER,y,w = 160,h,"Reset Pan && Zoom");
+			mainWindowResetPanAndZoomButton->callback(clickedResetPanAndZoomButton);
 
-	airspaceDisplay = new airspaceWidget(0,50,window->w(),window->h() - 40,"display");
-	airspaceDisplay->color(CLIENT_COLOR_BACKGROUND);
-	//Fl::add_handler(handleUserEvents);
-	window->resizable(airspaceDisplay);
+			char *model_name = NULL;
+			int cores = getCpuInfo(&model_name);
+			char hostname[HOST_NAME_MAX];
+			gethostname(hostname,sizeof(hostname));
 
-	Fl::add_timeout((double) _refresh_rate / 1000,refreshDisplay);
+			mainWindowSysinfoWidget = new Fl_Box(x += w + CLIENT_WIDGET_BORDER,y,CLIENT_SYSINFO_WIDTH,CLIENT_SYSINFO_HEIGHT,"");
+			mainWindowSysinfoWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+			mainWindowSysinfoWidget->color(FL_BACKGROUND_COLOR);
+			mainWindowSysinfoWidget->box(FL_FLAT_BOX);
+			mainWindowSysinfoWidget->labelcolor(CLIENT_SYSINFO_COLOR);
+			mainWindowSysinfoWidget->labelfont(CLIENT_SYSINFO_FONTFACE);
+			mainWindowSysinfoWidget->labelsize(CLIENT_SYSINFO_HEIGHT);
+			static char buffer[10 * HOST_NAME_MAX];
+			sprintf(buffer,"%s\n%dx %s",hostname,cores,model_name);
+			mainWindowSysinfoWidget->label(buffer);
 
-	// handle shutdown
-	handleShutdown(NULL);
+			mainWindowClockWidget = new Fl_Box(CLIENT_MAIN_WINDOW_WIDTH_MIN - CLIENT_CLOCK_WIDTH - CLIENT_WIDGET_BORDER,y,CLIENT_CLOCK_WIDTH,CLIENT_CLOCK_HEIGHT,"");
+			mainWindowClockWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_CENTER);
+			mainWindowClockWidget->color(FL_BACKGROUND_COLOR);
+			mainWindowClockWidget->box(FL_FLAT_BOX);
+			mainWindowClockWidget->labelcolor(CLIENT_CLOCK_COLOR);
+			mainWindowClockWidget->labelfont(CLIENT_CLOCK_FONTFACE);
+			mainWindowClockWidget->labelsize(CLIENT_CLOCK_HEIGHT);
+			Fl::add_timeout(1,refreshClock);
 
-	window->end();
-	window->show();
+			upperGroup->resizable(mainWindowSysinfoWidget);
+			upperGroup->end();
+		}
+
+		mainWindowAirspaceDisplay = new airspaceWidget(0,CLIENT_MAIN_WINDOW_BANNER_HEIGHT,mainWindow->w(),mainWindow->h() - CLIENT_MAIN_WINDOW_BANNER_HEIGHT,"display");
+		mainWindowAirspaceDisplay->color(CLIENT_COLOR_BACKGROUND);
+
+		mainWindow->resizable(mainWindowAirspaceDisplay);
+		mainWindow->end();
+
+		// set handlers
+		handleShutdown(NULL);
+		Fl::add_timeout((double) _refresh_rate / MSEC_PER_SEC,refreshDisplay);
+		mainWindow->callback(callbackOnMainWindowClose);
+	}
+
+	/*
+	**	create the track info window
+	*/
+	{
+		int x = CLIENT_WIDGET_BORDER,y = CLIENT_WIDGET_BORDER, w = 100,h = 30;
+
+		trackInfoWindow = new Fl_Double_Window(CLIENT_TRACKINFO_WINDOW_WIDTH,CLIENT_TRACKINFO_WINDOW_HEIGHT,"Client " __TITLE__ " - Track Info");
+
+		trackInfoWindowCallsignLabel = new Fl_Box(x,y,w,h,"Callsign:");
+		trackInfoWindowCallsignLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+		trackInfoWindowCallsignInfo = new Fl_Box(x + w,y,w,h,"");
+		trackInfoWindowCallsignInfo->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+
+		trackInfoWindowPositionLabel = new Fl_Box(x,y += h,w,h,"Position:");
+		trackInfoWindowPositionLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+		trackInfoWindowPositionInfo = new Fl_Box(x + w,y,w,h,"");
+		trackInfoWindowPositionInfo->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+
+		trackInfoWindowHeightLabel = new Fl_Box(x,y += h,w,h,"Height:");
+		trackInfoWindowHeightLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+		trackInfoWindowHeightInfo = new Fl_Box(x + w,y,w,h,"");
+		trackInfoWindowHeightInfo->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+
+		trackInfoWindowFlightLevelLabel = new Fl_Box(x,y += h,w,h,"Fight Level:");
+		trackInfoWindowFlightLevelLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+		trackInfoWindowFlightLevelInfo = new Fl_Box(x + w,y,w,h,"");
+		trackInfoWindowFlightLevelInfo->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+
+		trackInfoWindowSpeedLabel = new Fl_Box(x,y += h,w,h,"Speed:");
+		trackInfoWindowSpeedLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+		trackInfoWindowSpeedInfo = new Fl_Box(x + w,y,w,h,"");
+		trackInfoWindowSpeedInfo->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+
+		trackInfoWindow->end();
+	}
+
+	// go!
+	mainWindow->show();
 
 	return Fl::run();
 }
