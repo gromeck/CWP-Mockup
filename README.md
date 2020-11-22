@@ -147,12 +147,17 @@ The server runs in the following threads:
 
 On a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz) it is possible to simultanously display:
 
- - 250 tracks with a refresh rate of 10ms/100FPS (overall CPU load <30%)
- - 1.500 tracks with a refresh rate of 50ms/20FPS (overall CPU load <30%)
- - 3.000 tracks with a refresh rate of 100ms/10FPS (overall CPU load <30%)
+ - 250 tracks with a refresh rate of 10ms/100FPS (overall CPU load <30%; bandwidth with X11 forwarding ~100Mbits/s)
+ - 1.500 tracks with a refresh rate of 50ms/20FPS (overall CPU load <30%; bandwidth with X11 forwarding ~110Mbits/s)
+ - 3.000 tracks with a refresh rate of 100ms/10FPS (overall CPU load <30%; bandwidth with X11 forwarding ~130Mbits/s)
+ - 3.000 tracks with a refresh rate of 500ms/2FPS (overall CPU load <12%; bandwidth with X11 forwarding ~24Mbits/s)
+ 
+ Are more realistic test case showed:
+ 
+ - 500 tracks with a refresh rate of 1.000ms/1FPS (overall CPU load <%; bandwidth with X11 forwarding < 2.1Mbits/s)
 
 In any of these test cases the full airspace was visible, so that in fact all tracks are drawn into the display.
-The limiting factor is the load of the X server.
+The limiting factor is the load of the X server. X11 Forwarding was done via a 1GBit/s LAN connection.
 
 ## Why is FLTK used?
 
