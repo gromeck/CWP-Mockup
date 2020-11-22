@@ -93,6 +93,8 @@ The client receives incoming track data and will update its own track file. It w
 
 The display is updated in the requested refresh rate. This update always updates all tracks including symbol, prediction, history dots, label and -- if set -- an collsion alarm.
 
+The client allows panning by holding down the left mouse button, and zooming in and out with the mouse wheel.
+
 ## What does the label show?
 
 The label is organized in three lines.
@@ -114,7 +116,6 @@ The age gives a hint of the server and client processing speed respectivly load.
 This list is long, but here are the main aspects:
 
  - there are no maps displayed
- - no panning or zooming is implemented, instead the whole airspace map is scaled to fit into the display area
  - no track selection to operate on it
 
 # Other aspects
