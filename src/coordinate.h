@@ -58,6 +58,7 @@ public:
     Coordinate operator*(double scale);
 
     double getDistance(Coordinate b);
+    double getDistanceXY(Coordinate b);
     bool isInsideRange(void);
     void wrapToRange(void);
 };

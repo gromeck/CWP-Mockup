@@ -157,6 +157,13 @@ double Coordinate::getDistance(Coordinate b)
 			(this->z - b.z) * (this->z - b.z));
 }
 
+double Coordinate::getDistanceXY(Coordinate b)
+{
+	return sqrt(
+			(this->x - b.x) * (this->x - b.x) +
+			(this->y - b.y) * (this->y - b.y));
+}
+
 bool Coordinate::isInsideRange(void)
 {
 	if (this->x < 0 || this->x > MAP_WIDTH)
