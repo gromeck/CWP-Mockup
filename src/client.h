@@ -65,7 +65,7 @@
 #define CLIENT_TRACK_TOOOLD_TIMEOUT     1000
 
 // short term conflict alert, nm
-#define CLIENT_STCA_DISTANCE            10.0
+#define CLIENT_STCA_DISTANCE            5.0
 
 // frozen picture
 #define CLIENT_NODATA_BACKGROUND        FL_RED
