@@ -245,19 +245,20 @@ static void *runServerCommunication(void *arg)
 		exit(1);
 	}
 
-	while (!_shutdown) {
-		/*
-		**	listen on socket for incoming connection request
-		*/
-		if (_debug)
-			printf("listening on socket ...\n");
-		listen(sockfd,5);
+	/*
+	**	listen on the socket
+	*/
+	if (listen(sockfd,5) < 0) {
+		perror("ERROR on binding");
+		exit(1);
+	}
 
+	while (!_shutdown) {
 		/*
 		**	accept connection
 		*/
 		if (_debug)
-			printf("accepting connection ...\n");
+			printf("waiting for incoming connection request ...\n");
 		if ((connection = accept(sockfd,(struct sockaddr *) &addr,&addr_len)) < 0) {
 			perror("ERROR on accept");
 		}
@@ -266,31 +267,41 @@ static void *runServerCommunication(void *arg)
 				perror("ERROR on fdopen");
 			}
 		}
+		if (_debug)
+			printf("connection established\n");
 
 		/*
 		**	push the data to the client
 		*/
 		while (connectionfd && !_shutdown) {
+			int track;
+
 			if (_debug)
-				printf("waiting for data ...\n");
+				printf("sending track data ...\n");
 
 			if (fprintf(connectionfd,"TRACKS=%d\n",_tracks) < 0)
 				break;
-			for (int n = 0;n < _tracks;n++) {
+			for (track = 0;track < _tracks;track++) {
 				struct timeval now;
 
 				gettimeofday(&now,NULL);
 				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f,%lu,%lu\n",
-					n,
-					_track[n].callsign,
-					_track[n].position.getX(),
-					_track[n].position.getY(),
-					_track[n].position.getZ(),
-					_track[n].speed,
-					_track[n].prediction.getX(),
-					_track[n].prediction.getY(),
-					_track[n].prediction.getZ(),
+					track,
+					_track[track].callsign,
+					_track[track].position.getX(),
+					_track[track].position.getY(),
+					_track[track].position.getZ(),
+					_track[track].speed,
+					_track[track].prediction.getX(),
+					_track[track].prediction.getY(),
+					_track[track].prediction.getZ(),
 					now.tv_sec,now.tv_usec) < 0)
+				break;
+			}
+			if (track < _tracks) {
+				/*
+				**	we were not able to send all data
+				*/
 				break;
 			}
 			if (fflush(connectionfd) < 0)
@@ -305,6 +316,8 @@ static void *runServerCommunication(void *arg)
 		/*
 		**	close this connection
 		*/
+		if (_debug)
+			printf("closing connection\n");
 		if (connectionfd) {
 			fclose(connectionfd);
 			connectionfd = NULL;
