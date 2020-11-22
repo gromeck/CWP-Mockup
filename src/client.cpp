@@ -406,44 +406,68 @@ public:
 		return rc;
 	}
 
-	void setMapOffsetX(int offset_x)
+	/*
+	**	set the screen X offset
+	*/
+	void setScreenOffsetX(int offset_x)
 	{
 		this->screen_offset_x = offset_x;
 	}
 
-	void setMapOffsetY(int offset_y)
+	/*
+	**	set the screen Y offset
+	*/
+	void setScreenOffsetY(int offset_y)
 	{
 		this->screen_offset_y = offset_y;
 	}
 
+	/*
+	**	compute a X coordinate on the map for the screen
+	*/
 	int mapXToScreen(double map_x)
 	{
 		return (this->x() + this->screen_offset_x + (map_x * this->map_scale) / MAP_WIDTH  * this->w());
 	}
 
+	/*
+	**	compute a width on the map for the screen
+	*/
 	int mapWToScreen(double map_width)
 	{
 		return (map_width * this->map_scale) / MAP_WIDTH  * this->w();
 	}
 
+	/*
+	**	compute a X coordinate on the screen for the map
+	*/
 	double mapScreenToX(int scrx)
 	{
-		return (scrx - this->x() - this->screen_offset_x) * MAP_WIDTH / this->w() / this->map_scale;
+		return (double) (scrx - this->x() - this->screen_offset_x) * MAP_WIDTH / this->w() / this->map_scale;
 	}
 
+	/*
+	**	compute a height on the map for the screen
+	*/
 	int mapHToScreen(double map_height)
 	{
 		return (map_height * this->map_scale) / MAP_HEIGHT  * this->h();
 	}
 
+	/*
+	**	compute a Y coordinate on the map for the screen
+	*/
 	int mapYToScreen(double mapy)
 	{
 		return (this->y() + this->screen_offset_y + (mapy * this->map_scale) / MAP_HEIGHT * this->h());
 	}
 
+	/*
+	**	compute a Y coordinate on the screen for the map
+	*/
 	double mapScreenToY(int scry)
 	{
-		return (scry - this->y() - this->screen_offset_y) * MAP_HEIGHT / this->h() / this->map_scale;
+		return (double) (scry - this->y() - this->screen_offset_y) * MAP_HEIGHT / this->h() / this->map_scale;
 	}
 
 	/*
@@ -720,8 +744,8 @@ static void clickedSetButton(Fl_Widget *widget)
 */
 static void clickedResetPanAndZoomButton(Fl_Widget *widget)
 {
-	airspaceDisplay->setMapOffsetX(0);
-	airspaceDisplay->setMapOffsetY(0);
+	airspaceDisplay->setScreenOffsetX(0);
+	airspaceDisplay->setScreenOffsetY(0);
 	airspaceDisplay->mapZoomReset();
 	airspaceDisplay->redraw();
 }
