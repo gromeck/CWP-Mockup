@@ -93,6 +93,14 @@
 #define CLIENT_COLOR_ALERT              FL_RED
 #define CLIENT_COLOR_PREDICTION         FL_WHITE
 #define CLIENT_COLOR_HISTORY            FL_WHITE
+#define CLIENT_COLOR_MAP_BORDER         FL_YELLOW
+
+/*
+**  map projection
+*/
+#define CLIENT_MAP_ZOOM_MIN             0.1
+#define CLIENT_MAP_ZOOM_MAX             10.0
+#define CLIENT_MAP_ZOOM_STEP            10 //percent
 
 typedef struct {
     char callsign[CALLSIGN_LENGTH + 1];

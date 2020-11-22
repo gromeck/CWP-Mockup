@@ -38,6 +38,7 @@
 #include <limits.h>
 #include <math.h>
 #include <FL/Fl.H>
+#include <FL/names.h>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Int_Input.H>
@@ -333,10 +334,168 @@ private:
 	double rendering_time = 0;
 	char info[1000];
 
+	/*
+	**	offset and scale of the map
+	*/
+	int screen_offset_x = 0;
+	int screen_offset_y = 0;
+	double map_scale = 1;
+	int panning_start_x = 0;
+	int panning_start_y = 0;
+
 public:
 	airspaceWidget(int x, int y, int w, int h, const char *label) : Fl_Box::Fl_Box(x, y, w, h, label)
 	{
 		// nothing here for now
+	}
+
+	virtual int handle(int event)
+	{
+		int rc = 0;
+
+		//printf("handle: %s (%d)\n",fl_eventnames[event],event);
+
+		switch (event) {
+			case FL_PUSH:
+				/*
+				**	start panning
+				*/
+				printf("handle: %s(%d): x=%d  y=%d  button=%d\n",
+					fl_eventnames[event],event,
+					Fl::event_x(),Fl::event_y(),
+					Fl::event_button());
+				if (Fl::event_button() == 1) {
+					this->panning_start_x = Fl::event_x();
+					this->panning_start_y = Fl::event_y();
+					rc = 1;
+				}
+				break;
+			case FL_DRAG:
+				/*
+				**	pan with mouse button held down and move
+				*/
+				printf("handle: %s(%d): x=%d  y=%d\n",
+					fl_eventnames[event],event,
+					Fl::event_x(),Fl::event_y());
+				this->screen_offset_x -= this->panning_start_x - Fl::event_x();
+				this->screen_offset_y -= this->panning_start_y - Fl::event_y();
+				this->panning_start_x = Fl::event_x();
+				this->panning_start_y = Fl::event_y();
+				this->redraw();
+				rc = 1;
+				break;
+			case FL_MOUSEWHEEL:
+				/*
+				**	zoom with the mouse wheel
+				*/
+				printf("handle: %s(%d): x=%d  y=%d  dx=%d  dy=%d\n",
+					fl_eventnames[event],event,
+					Fl::event_x(),Fl::event_y(),
+					Fl::event_dx(),Fl::event_dy());
+				if (Fl::event_dy() < 0)
+					this->mapZoomIn(Fl::event_x(),Fl::event_y());
+				if (Fl::event_dy() > 0)
+					this->mapZoomOut(Fl::event_x(),Fl::event_y());
+				this->redraw();
+				rc = 1;
+				break;
+		}
+		return rc;
+	}
+
+	void setMapOffsetX(int offset_x)
+	{
+		this->screen_offset_x = offset_x;
+	}
+
+	void setMapOffsetY(int offset_y)
+	{
+		this->screen_offset_y = offset_y;
+	}
+
+	int mapXToScreen(double map_x)
+	{
+		return (this->x() + this->screen_offset_x + (map_x * this->map_scale) / MAP_WIDTH  * this->w());
+	}
+
+	int mapWToScreen(double map_width)
+	{
+		return (map_width * this->map_scale) / MAP_WIDTH  * this->w();
+	}
+
+	double mapScreenToX(int scrx)
+	{
+		return (scrx - this->x() - this->screen_offset_x) * MAP_WIDTH / this->w() / this->map_scale;
+	}
+
+	int mapHToScreen(double map_height)
+	{
+		return (map_height * this->map_scale) / MAP_HEIGHT  * this->h();
+	}
+
+	int mapYToScreen(double mapy)
+	{
+		return (this->y() + this->screen_offset_y + (mapy * this->map_scale) / MAP_HEIGHT * this->h());
+	}
+
+	double mapScreenToY(int scry)
+	{
+		return (scry - this->y() - this->screen_offset_y) * MAP_HEIGHT / this->h() / this->map_scale;
+	}
+
+	/*
+	**	zoom into the map
+	**	keep the point where zooming happens at the same position
+	*/
+	void mapZoomIn(int screen_x,int screen_y)
+	{
+		double map_x = mapScreenToX(screen_x);
+		double map_y = mapScreenToY(screen_y);
+
+		if ((this->map_scale *= 1.0 + (double) CLIENT_MAP_ZOOM_STEP / 100.0) > CLIENT_MAP_ZOOM_MAX)
+			this->map_scale = CLIENT_MAP_ZOOM_MAX;
+
+		int new_screen_x = mapXToScreen(map_x);
+		int new_screen_y = mapYToScreen(map_y);
+
+		printf("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d\n",
+			screen_x,screen_y,
+			new_screen_x,new_screen_y,
+			new_screen_x - screen_x,new_screen_y - screen_y);
+		this->screen_offset_x -= new_screen_x - screen_x;
+		this->screen_offset_y -= new_screen_y - screen_y;
+		printf("mapZoomIn: screen_offset=%d/%d\n",this->screen_offset_x,this->screen_offset_y);
+	}
+
+	/*
+	**	zoom out of the map
+	*/
+	void mapZoomOut(int screen_x,int screen_y)
+	{
+		double map_x = mapScreenToX(screen_x);
+		double map_y = mapScreenToY(screen_y);
+
+		if ((this->map_scale /= 1.0 + (double) CLIENT_MAP_ZOOM_STEP / 100.0) < CLIENT_MAP_ZOOM_MIN)
+			this->map_scale = CLIENT_MAP_ZOOM_MIN;
+
+		int new_screen_x = mapXToScreen(map_x);
+		int new_screen_y = mapYToScreen(map_y);
+
+		printf("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d\n",
+			screen_x,screen_y,
+			new_screen_x,new_screen_y,
+			new_screen_x - screen_x,new_screen_y - screen_y);
+		this->screen_offset_x -= new_screen_x - screen_x;
+		this->screen_offset_y -= new_screen_y - screen_y;
+		printf("mapZoomIn: screen_offset=%d/%d\n",this->screen_offset_x,this->screen_offset_y);
+	}
+
+	/*
+	**	reset the zoom
+	*/
+	void mapZoomReset(void)
+	{
+		this->map_scale = 1;
 	}
 
 	void draw(void)
@@ -352,6 +511,14 @@ public:
 		// draw the background
 		fl_draw_box(FL_FLAT_BOX,x(),y(),w(),h(),CLIENT_COLOR_BACKGROUND);
 
+		// draw the map boarders
+		fl_color(CLIENT_COLOR_MAP_BORDER);
+		fl_rect(
+			this->mapXToScreen(0),
+			this->mapYToScreen(0),
+			this->mapWToScreen(MAP_WIDTH),
+			this->mapHToScreen(MAP_HEIGHT));
+
 		int tracks = 0;
 		for (int idx = 0;idx < TRACKS_MAX;idx++) {
 			if (_track[idx].valid) {
@@ -359,11 +526,9 @@ public:
 				**	compute the position on the screen within the widget
 				*/
 				tracks++;
-#define MAPX2SCR(mapx)		(x() + (mapx) / MAP_WIDTH  * w())
-#define MAPY2SCR(mapy)		(y() + (mapy) / MAP_HEIGHT * h())
 
-				int pos_x = MAPX2SCR(_track[idx].track.position.getX());
-				int pos_y = MAPY2SCR(_track[idx].track.position.getY());
+				int pos_x = this->mapXToScreen(_track[idx].track.position.getX());
+				int pos_y = this->mapYToScreen(_track[idx].track.position.getY());
 
 				// draw the symbol
 				fl_color(CLIENT_COLOR_SYMBOL);
@@ -374,20 +539,23 @@ public:
 				// draw history dots
 				fl_color(CLIENT_COLOR_HISTORY);
 				for (int dot = 0;dot < _track[idx].history_dots;dot++)
-					fl_point(MAPX2SCR(_track[idx].history[dot].getX()),MAPY2SCR(_track[idx].history[dot].getY()));
+					fl_point(
+						this->mapXToScreen(_track[idx].history[dot].getX()),
+						this->mapYToScreen(_track[idx].history[dot].getY()));
 
 				// draw red circle if another aircraft is close
 				if (_track[idx].stca) {
 					fl_color(CLIENT_COLOR_ALERT);
-					fl_circle(pos_x,pos_y,CLIENT_STCA_DISTANCE / MAP_WIDTH * w() / 2);
+					fl_circle(pos_x,pos_y,
+						this->mapWToScreen(CLIENT_STCA_DISTANCE));
 				}
 
 				if (!_track[idx].coasting) {
 					// draw prediction line
 					fl_color(CLIENT_COLOR_PREDICTION);
 					fl_line(pos_x,pos_y,
-							MAPX2SCR(_track[idx].track.prediction.getX()),
-							MAPY2SCR(_track[idx].track.prediction.getY()));
+							this->mapXToScreen(_track[idx].track.prediction.getX()),
+							this->mapYToScreen(_track[idx].track.prediction.getY()));
 
 					// draw the label
 					char label[CLIENT_LABEL_LINES][50];
@@ -477,6 +645,7 @@ static Fl_Double_Window* window;
 static Fl_Box *refreshRateLabel;
 static Fl_Int_Input *refreshRateInput;
 static Fl_Return_Button *setButton;
+static Fl_Button *resetPanAndZoomButton;
 static Fl_Box *sysinfoWidget;
 static Fl_Box *clockWidget;
 static airspaceWidget *airspaceDisplay;
@@ -540,6 +709,17 @@ static void clickedSetButton(Fl_Widget *widget)
 }
 
 /*
+**	user clicked the reset button
+*/
+static void clickedResetPanAndZoomButton(Fl_Widget *widget)
+{
+	airspaceDisplay->setMapOffsetX(0);
+	airspaceDisplay->setMapOffsetY(0);
+	airspaceDisplay->mapZoomReset();
+	airspaceDisplay->redraw();
+}
+
+/*
 **	handle the shutdown of the frontend
 */
 static void handleShutdown(void *)
@@ -583,6 +763,46 @@ static int getCpuInfo(char **model_name)
 	return cores;
 }
 
+static int handleUserEvents(int event)
+{
+	int rc = 0;
+
+	printf("handleUserEvents: %s (%d)\n",fl_eventnames[event],event);
+
+	switch (event) {
+		case FL_PUSH:
+			/*
+			**	start panning
+			*/
+			printf("handleUserEvents: FL_PUSH: x=%d  y=%d\n",
+				Fl::event_x(),Fl::event_y());
+
+			break;
+		case FL_DRAG:
+			/*
+			**	pan with mouse button held down and move
+			*/
+			printf("handleUserEvents: FL_DRAG: x=%d  y=%d\n",
+				Fl::event_x(),Fl::event_y());
+
+			break;
+		case FL_MOUSEWHEEL:
+			/*
+			**	zoom with the mouse wheel
+			*/
+			printf("handleUserEvents: FL_MOUSEWHEEL: x=%d  y=%d  dx=%d  dy=%d\n",
+				Fl::event_x(),Fl::event_y(),
+				Fl::event_dx(),Fl::event_dy());
+			if (Fl::event_dy() < 0)
+				airspaceDisplay->mapZoomIn(Fl::event_x(),Fl::event_y());
+			if (Fl::event_dy() > 0)
+				airspaceDisplay->mapZoomOut(Fl::event_x(),Fl::event_y());
+			rc = 1;
+			break;
+	}
+	return rc;
+}
+
 /*
 **	handle the frontend generation
 */
@@ -604,12 +824,15 @@ static int runClientFrontend(bool fullscreen)
 	setButton = new Fl_Return_Button(220,10,80,30,"Set");
 	setButton->callback(clickedSetButton);
 
+	resetPanAndZoomButton = new Fl_Button(320,10,160,30,"Reset Pan && Zoom");
+	resetPanAndZoomButton->callback(clickedResetPanAndZoomButton);
+
 	char *model_name = NULL;
 	int cores = getCpuInfo(&model_name);
 	char hostname[HOST_NAME_MAX];
 	gethostname(hostname,sizeof(hostname));
 
-	sysinfoWidget = new Fl_Box(330,10,CLIENT_SYSINFO_WIDTH,CLIENT_SYSINFO_HEIGHT,"");
+	sysinfoWidget = new Fl_Box(500,10,CLIENT_SYSINFO_WIDTH,CLIENT_SYSINFO_HEIGHT,"");
 	sysinfoWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
 	sysinfoWidget->color(FL_BACKGROUND_COLOR);
 	sysinfoWidget->box(FL_FLAT_BOX);
@@ -631,6 +854,7 @@ static int runClientFrontend(bool fullscreen)
 
 	airspaceDisplay = new airspaceWidget(0,50,window->w(),window->h() - 40,"display");
 	airspaceDisplay->color(CLIENT_COLOR_BACKGROUND);
+	//Fl::add_handler(handleUserEvents);
 	window->resizable(airspaceDisplay);
 
 	Fl::add_timeout((double) _refresh_rate / 1000,refreshDisplay);
