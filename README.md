@@ -1,6 +1,8 @@
 # CWP-Mockup
 
-A mockup for an ATC controller working position (CWP). It can be used as a test dummy for different display setups.
+A mockup for an ATC controller working position (CWP). It can be used as a test dummy for different display or hardware setups.
+
+It has no hardware dependency -- it's just uses FLTK and is more or less plain X11 -- no openGL/GLX. So it is even possible to forward the client with setting X11 display environment variable. And it still reaches real good performance. See the description below about performance.
 
 <div style="float:left;">
 <img src="Ressources/Screenshots/CWP-Mockup-Screenshot-Display-1.png" height="500px">
@@ -97,6 +99,12 @@ The client allows panning by holding down the left mouse button, and zooming in 
 
 Clicking on a track symbol within a range of 3nm will open an info window showing track details.
 
+In the lower part of the display, the current performance values are displayed, which are:
+
+ - number tracks the client processes,
+ - the rendering time in milliseconds,
+ - the refresh rate in milliseconds, as well as in frames per second (FPS).
+
 ## What does the label show?
 
 The label is organized in three lines.
@@ -121,8 +129,33 @@ This list is long, but here are the main aspects:
 
 # Other aspects
 
+## Performance
+
+Server and client are both multi-hreaded
+
+The server runs in the following threads:
+
+ - socket communication to the client
+ - air traffic generation
+ - GUI
+
+The server runs in the following threads:
+
+ - socket communication to the server
+ - air traffic processing
+ - GUI
+
+On a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz) it is possible to simultanously display:
+
+ - 250 tracks with a refresh rate of 10ms/100FPS (overall CPU load <30%)
+ - 1.500 tracks with a refresh rate of 50ms/20FPS (overall CPU load <30%)
+ - 3.000 tracks with a refresh rate of 100ms/10FPS (overall CPU load <30%)
+
+In any of these test cases the full airspace was visible, so that in fact all tracks are drawn into the display.
+The limiting factor is the load of the X server.
+
 ## Why is FLTK used?
 
 [FLTK](https://www.fltk.org/) is not that sophisticated, but it is fast and offers all we need for this project.
 
-Furthermore, it allows to link the binary statically (see above), which not that easy with GTK+ or Qt.
+Furthermore, it allows to link the binary statically (see above), which is not that easy with GTK+ or Qt.
