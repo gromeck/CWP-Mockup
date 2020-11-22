@@ -360,10 +360,11 @@ public:
 				/*
 				**	start panning
 				*/
-				printf("handle: %s(%d): x=%d  y=%d  button=%d\n",
-					fl_eventnames[event],event,
-					Fl::event_x(),Fl::event_y(),
-					Fl::event_button());
+				if (_debug)
+					printf("handle: %s(%d): x=%d  y=%d  button=%d\n",
+						fl_eventnames[event],event,
+						Fl::event_x(),Fl::event_y(),
+						Fl::event_button());
 				if (Fl::event_button() == 1) {
 					this->panning_start_x = Fl::event_x();
 					this->panning_start_y = Fl::event_y();
@@ -374,9 +375,10 @@ public:
 				/*
 				**	pan with mouse button held down and move
 				*/
-				printf("handle: %s(%d): x=%d  y=%d\n",
-					fl_eventnames[event],event,
-					Fl::event_x(),Fl::event_y());
+				if (_debug)
+					printf("handle: %s(%d): x=%d  y=%d\n",
+						fl_eventnames[event],event,
+						Fl::event_x(),Fl::event_y());
 				this->screen_offset_x -= this->panning_start_x - Fl::event_x();
 				this->screen_offset_y -= this->panning_start_y - Fl::event_y();
 				this->panning_start_x = Fl::event_x();
@@ -388,10 +390,11 @@ public:
 				/*
 				**	zoom with the mouse wheel
 				*/
-				printf("handle: %s(%d): x=%d  y=%d  dx=%d  dy=%d\n",
-					fl_eventnames[event],event,
-					Fl::event_x(),Fl::event_y(),
-					Fl::event_dx(),Fl::event_dy());
+				if (_debug)
+					printf("handle: %s(%d): x=%d  y=%d  dx=%d  dy=%d\n",
+						fl_eventnames[event],event,
+						Fl::event_x(),Fl::event_y(),
+						Fl::event_dx(),Fl::event_dy());
 				if (Fl::event_dy() < 0)
 					this->mapZoomIn(Fl::event_x(),Fl::event_y());
 				if (Fl::event_dy() > 0)
@@ -458,13 +461,15 @@ public:
 		int new_screen_x = mapXToScreen(map_x);
 		int new_screen_y = mapYToScreen(map_y);
 
-		printf("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d\n",
-			screen_x,screen_y,
-			new_screen_x,new_screen_y,
-			new_screen_x - screen_x,new_screen_y - screen_y);
+		if (_debug)
+			printf("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d\n",
+				screen_x,screen_y,
+				new_screen_x,new_screen_y,
+				new_screen_x - screen_x,new_screen_y - screen_y);
 		this->screen_offset_x -= new_screen_x - screen_x;
 		this->screen_offset_y -= new_screen_y - screen_y;
-		printf("mapZoomIn: screen_offset=%d/%d\n",this->screen_offset_x,this->screen_offset_y);
+		if (_debug)
+			printf("mapZoomIn: screen_offset=%d/%d\n",this->screen_offset_x,this->screen_offset_y);
 	}
 
 	/*
@@ -481,13 +486,15 @@ public:
 		int new_screen_x = mapXToScreen(map_x);
 		int new_screen_y = mapYToScreen(map_y);
 
-		printf("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d\n",
-			screen_x,screen_y,
-			new_screen_x,new_screen_y,
-			new_screen_x - screen_x,new_screen_y - screen_y);
+		if (_debug)
+			printf("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d\n",
+				screen_x,screen_y,
+				new_screen_x,new_screen_y,
+				new_screen_x - screen_x,new_screen_y - screen_y);
 		this->screen_offset_x -= new_screen_x - screen_x;
 		this->screen_offset_y -= new_screen_y - screen_y;
-		printf("mapZoomIn: screen_offset=%d/%d\n",this->screen_offset_x,this->screen_offset_y);
+		if (_debug)
+			printf("mapZoomIn: screen_offset=%d/%d\n",this->screen_offset_x,this->screen_offset_y);
 	}
 
 	/*
@@ -763,46 +770,6 @@ static int getCpuInfo(char **model_name)
 	return cores;
 }
 
-static int handleUserEvents(int event)
-{
-	int rc = 0;
-
-	printf("handleUserEvents: %s (%d)\n",fl_eventnames[event],event);
-
-	switch (event) {
-		case FL_PUSH:
-			/*
-			**	start panning
-			*/
-			printf("handleUserEvents: FL_PUSH: x=%d  y=%d\n",
-				Fl::event_x(),Fl::event_y());
-
-			break;
-		case FL_DRAG:
-			/*
-			**	pan with mouse button held down and move
-			*/
-			printf("handleUserEvents: FL_DRAG: x=%d  y=%d\n",
-				Fl::event_x(),Fl::event_y());
-
-			break;
-		case FL_MOUSEWHEEL:
-			/*
-			**	zoom with the mouse wheel
-			*/
-			printf("handleUserEvents: FL_MOUSEWHEEL: x=%d  y=%d  dx=%d  dy=%d\n",
-				Fl::event_x(),Fl::event_y(),
-				Fl::event_dx(),Fl::event_dy());
-			if (Fl::event_dy() < 0)
-				airspaceDisplay->mapZoomIn(Fl::event_x(),Fl::event_y());
-			if (Fl::event_dy() > 0)
-				airspaceDisplay->mapZoomOut(Fl::event_x(),Fl::event_y());
-			rc = 1;
-			break;
-	}
-	return rc;
-}
-
 /*
 **	handle the frontend generation
 */
@@ -824,7 +791,7 @@ static int runClientFrontend(bool fullscreen)
 	setButton = new Fl_Return_Button(220,10,80,30,"Set");
 	setButton->callback(clickedSetButton);
 
-	resetPanAndZoomButton = new Fl_Button(320,10,160,30,"Reset Pan && Zoom");
+	resetPanAndZoomButton = new Fl_Button(310,10,160,30,"Reset Pan && Zoom");
 	resetPanAndZoomButton->callback(clickedResetPanAndZoomButton);
 
 	char *model_name = NULL;
@@ -832,7 +799,7 @@ static int runClientFrontend(bool fullscreen)
 	char hostname[HOST_NAME_MAX];
 	gethostname(hostname,sizeof(hostname));
 
-	sysinfoWidget = new Fl_Box(500,10,CLIENT_SYSINFO_WIDTH,CLIENT_SYSINFO_HEIGHT,"");
+	sysinfoWidget = new Fl_Box(480,10,CLIENT_SYSINFO_WIDTH,CLIENT_SYSINFO_HEIGHT,"");
 	sysinfoWidget->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
 	sysinfoWidget->color(FL_BACKGROUND_COLOR);
 	sysinfoWidget->box(FL_FLAT_BOX);
