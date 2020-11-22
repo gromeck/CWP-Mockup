@@ -95,6 +95,8 @@ The display is updated in the requested refresh rate. This update always updates
 
 The client allows panning by holding down the left mouse button, and zooming in and out with the mouse wheel.
 
+Clicking on a track symbol within a range of 3nm will open an info window showing track details.
+
 ## What does the label show?
 
 The label is organized in three lines.
@@ -116,7 +118,6 @@ The age gives a hint of the server and client processing speed respectivly load.
 This list is long, but here are the main aspects:
 
  - there are no maps displayed
- - no track selection to operate on it
 
 # Other aspects
 
