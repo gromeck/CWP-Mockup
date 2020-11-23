@@ -14,11 +14,14 @@ This binary is then started as a server and a client. Both, server and client, h
 
 # Build the software
 
-Ensure that you got [FLTK](https://www.fltk.org/) V1.3.5 development environment installed.
+Ensure that you got
+[FLTK](https://www.fltk.org/) V1.3.5 and
+[POCO C++ Libraries](https://pocoproject.org/)
+development environment installed.
 To prepare the build environment on Debian do:
 
 ```
-apt -y install libfltk1.3-dev autoconf automake make g++
+apt -y install libfltk1.3-dev libpoco-dev autoconf automake make g++
 ```
 
 Enter the subdirectory `src/` and enter `./build.sh`. Add `--enable-static` to statically link the binary.
