@@ -23,6 +23,10 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include <Poco/Channel.h>
+#include <Poco/ConsoleChannel.h>
+#include <Poco/Logger.h>
+
 #define __TITLE__		"CWP-Mockup"
 #define __VERSION_NR__	"0.1"
 
@@ -68,6 +72,14 @@
 
 // prediction time [s]
 #define PREDICTION_TIME     60
+
+extern Poco::ConsoleChannel *_channel;
+extern Poco::Logger &_logger;
+
+#define LOG_ERROR(args...)          poco_error(_logger,(std::string) (__FILE__ ": ") + Poco::format(args,NULL))
+#define LOG_WARNING(args...)        poco_warning(_logger,(std::string) (__FILE__ ": ") + Poco::format(args,NULL))
+#define LOG_NOTICE(args...)         poco_notice(_logger,(std::string) (__FILE__ ": ") + Poco::format(args,NULL))
+#define LOG_INFO(args...)           poco_information(_logger,(std::string) (__FILE__ ": ") + Poco::format(args,NULL))
 
 extern bool _shutdown;
 extern bool _debug;

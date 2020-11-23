@@ -128,8 +128,7 @@ static CLIENT_TRACK *lookupTrack(double x,double y)
 			if (distance < CLIENT_SELECT_MINDISTANCE && (found_idx < 0 || distance < found_distance)) {
 				found_idx = idx;
 				found_distance = distance;
-				if (_debug)
-					printf("idx=%d  distance=%.1f\n",idx,distance);
+				LOG_INFO("idx=%d  distance=%.1f",idx,distance);
 			}
 		}
 	}
@@ -273,12 +272,10 @@ static void *runClientCommunication(void *arg)
 			CLIENT_TRACK_UPDATE track;
 			char line[1024];
 
-			if (_debug)
-				printf("waiting for track data\n");
+			LOG_INFO("waiting for track data");
 			if (fgets(line,sizeof(line),connectionfd)) {
 				// parse the received content
-				if (_debug)
-					printf("fgets(): %s\n",line);
+				LOG_INFO("fgets(): %s",(std::string) line);
 				memset(&track,0,sizeof(track));
 				double posX,posY,posZ;
 				double preX,preY,preZ;
@@ -294,8 +291,7 @@ static void *runClientCommunication(void *arg)
 						&preY,
 						&preZ,
 						&track.timestamp.tv_sec,&track.timestamp.tv_usec) < 0) {
-					if (_debug)
-						printf("received invalid line: %s\n",line);
+					LOG_ERROR("received invalid line: %s",(std::string) line);
 				}
 				else {
 					/*
@@ -303,30 +299,27 @@ static void *runClientCommunication(void *arg)
 					*/
 					track.position.set(posX,posY,posZ);
 					track.prediction.set(preX,preY,preZ);
-					if (_debug)
-						printf("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)\n",
-								idx,track.callsign,
-								track.position.getX(),
-								track.position.getY(),
-								track.position.getZ(),
-								track.speed,
-								track.prediction.getX(),
-								track.prediction.getY(),
-								track.prediction.getZ());
+					LOG_INFO("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)",
+							idx,(std::string) track.callsign,
+							track.position.getX(),
+							track.position.getY(),
+							track.position.getZ(),
+							track.speed,
+							track.prediction.getX(),
+							track.prediction.getY(),
+							track.prediction.getZ());
 					updateTrack(idx,&track);
 				}
 			}
 			else {
-				if (_debug)
-					perror("fgets() failed");
+				LOG_ERROR("fgets() failed");
 				break;
 			}
 		}
 
 		// disconnect
 		_connected = false;
-		if (_debug)
-			printf("shutting down connection to server\n");
+		LOG_NOTICE("shutting down connection to server");
 		if (connectionfd) {
 			fclose(connectionfd);
 			connectionfd = NULL;
@@ -379,28 +372,12 @@ static int _refresh_rate = CLIENT_REFRESH_RATE_DEFAULT;
 */
 static void openTrackInfoWindow(CLIENT_TRACK *track)
 {
-#define BUFFER_SIZE	25
-	static char buffer_position[BUFFER_SIZE];
-	static char buffer_height[BUFFER_SIZE];
-	static char buffer_flightlevel[BUFFER_SIZE];
-	static char buffer_speed[BUFFER_SIZE];
-#undef BUFFER_SIZE
-
 	if (track) {
 		trackInfoWindowCallsignInfo->label(track->track.callsign);
-
-		sprintf(buffer_position,"%.1f/%.1f",track->track.position.getX(),track->track.position.getY());
-		trackInfoWindowPositionInfo->label(buffer_position);
-#if 1
-		sprintf(buffer_height,"%.1fft",NM2FT(track->track.position.getZ()));
-		trackInfoWindowHeightInfo->label(buffer_height);
-
-		sprintf(buffer_flightlevel,"%d",(int) FT2FL(NM2FT(track->track.position.getZ())));
-		trackInfoWindowFlightLevelInfo->label(buffer_flightlevel);
-
-		sprintf(buffer_speed,"%dkn",track->track.speed);
-		trackInfoWindowSpeedInfo->label(buffer_speed);
-#endif
+		trackInfoWindowPositionInfo->copy_label(Poco::format("%.1f/%.1f",track->track.position.getX(),track->track.position.getY()).c_str());
+		trackInfoWindowHeightInfo->copy_label(Poco::format("%.1fft",NM2FT(track->track.position.getZ())).c_str());
+		trackInfoWindowFlightLevelInfo->copy_label(Poco::format("%d",(int) FT2FL(NM2FT(track->track.position.getZ()))).c_str());
+		trackInfoWindowSpeedInfo->copy_label(Poco::format("%dkn",track->track.speed).c_str());
 		trackInfoWindow->show();
 	}
 	else
@@ -435,16 +412,15 @@ public:
 		int rc = 0;
 		CLIENT_TRACK *track = NULL;
 
-		//printf("handle: %s (%d)\n",fl_eventnames[event],event);
+		LOG_INFO("%s (%d)",(std::string) fl_eventnames[event],event);
 
 		switch (event) {
 			case FL_PUSH:
 				/*
 				**	start panning
 				*/
-				if (_debug)
-					printf("handle: %s(%d): x=%d  y=%d  button=%d\n",
-						fl_eventnames[event],event,
+				LOG_INFO("%s(%d): x=%d  y=%d  button=%d",
+						(std::string) fl_eventnames[event],event,
 						Fl::event_x(),Fl::event_y(),
 						Fl::event_button());
 				if (Fl::event_button() == 1) {
@@ -457,9 +433,8 @@ public:
 				/*
 				**	pan with mouse button held down and move
 				*/
-				if (_debug)
-					printf("handle: %s(%d): x=%d  y=%d\n",
-						fl_eventnames[event],event,
+				LOG_INFO("%s(%d): x=%d  y=%d",
+						(std::string) fl_eventnames[event],event,
 						Fl::event_x(),Fl::event_y());
 				this->screen_offset_x -= this->panning_start_x - Fl::event_x();
 				this->screen_offset_y -= this->panning_start_y - Fl::event_y();
@@ -472,9 +447,8 @@ public:
 					/*
 					**	user release the button (after a press) on a target
 					*/
-					if (_debug)
-						printf("handle: %s(%d): x=%d  y=%d  button=%d\n",
-							fl_eventnames[event],event,
+					LOG_INFO("%s(%d): x=%d  y=%d  button=%d",
+							(std::string) fl_eventnames[event],event,
 							Fl::event_x(),Fl::event_y(),
 							Fl::event_button());
 					/*
@@ -486,9 +460,8 @@ public:
 				/*
 				**	zoom with the mouse wheel
 				*/
-				if (_debug)
-					printf("handle: %s(%d): x=%d  y=%d  dx=%d  dy=%d\n",
-						fl_eventnames[event],event,
+				LOG_INFO("%s(%d): x=%d  y=%d  dx=%d  dy=%d",
+						(std::string) fl_eventnames[event],event,
 						Fl::event_x(),Fl::event_y(),
 						Fl::event_dx(),Fl::event_dy());
 				if (Fl::event_dy() < 0)
@@ -581,15 +554,13 @@ public:
 		int new_screen_x = mapXToScreen(map_x);
 		int new_screen_y = mapYToScreen(map_y);
 
-		if (_debug)
-			printf("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d\n",
+		LOG_INFO("screen=%d/%d new_screen=%d/%d  detla=%d/%d",
 				screen_x,screen_y,
 				new_screen_x,new_screen_y,
 				new_screen_x - screen_x,new_screen_y - screen_y);
 		this->screen_offset_x -= new_screen_x - screen_x;
 		this->screen_offset_y -= new_screen_y - screen_y;
-		if (_debug)
-			printf("mapZoomIn: screen_offset=%d/%d\n",this->screen_offset_x,this->screen_offset_y);
+		LOG_INFO("screen_offset=%d/%d",this->screen_offset_x,this->screen_offset_y);
 	}
 
 	/*
@@ -606,15 +577,13 @@ public:
 		int new_screen_x = mapXToScreen(map_x);
 		int new_screen_y = mapYToScreen(map_y);
 
-		if (_debug)
-			printf("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d\n",
+		LOG_INFO("mapZoomIn: screen=%d/%d new_screen=%d/%d  detla=%d/%d",
 				screen_x,screen_y,
 				new_screen_x,new_screen_y,
 				new_screen_x - screen_x,new_screen_y - screen_y);
 		this->screen_offset_x -= new_screen_x - screen_x;
 		this->screen_offset_y -= new_screen_y - screen_y;
-		if (_debug)
-			printf("mapZoomIn: screen_offset=%d/%d\n",this->screen_offset_x,this->screen_offset_y);
+		LOG_INFO("mapZoomIn: screen_offset=%d/%d",this->screen_offset_x,this->screen_offset_y);
 	}
 
 	/*
@@ -627,7 +596,7 @@ public:
 
 	void draw(void)
 	{
-		//printf("airspaceWidget::draw(): ...\n");
+		//LOG_INFO("airspaceWidget::draw(): ...");
 
 		struct timeval start_rendering;
 		gettimeofday(&start_rendering,NULL);
@@ -786,17 +755,13 @@ static airspaceWidget *mainWindowAirspaceDisplay;
 */
 static void refreshClock(void *)
 {
-#define BUFFER_SIZE	10
-	static char buffer[BUFFER_SIZE];
-#undef BUFFER_SIZE
 	time_t now;
 	struct tm * timeinfo;
 
 	time(&now);
 	timeinfo = localtime(&now);
-	sprintf(buffer,"%02d:%02d:%02d",
-			timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
-	mainWindowClockWidget->label(buffer);
+	mainWindowClockWidget->copy_label(Poco::format("%02d:%02d:%02d",
+			timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec).c_str());
 
 	// schedule the next refresh
 	Fl::repeat_timeout(1,refreshClock);
@@ -823,12 +788,7 @@ static void refreshDisplay(void *)
 */
 static void updateRefreshRateInput(int refresh_rate)
 {
-#define BUFFER_SIZE	10
-	static char buffer[BUFFER_SIZE];
-#undef BUFFER_SIZE
-
-	sprintf(buffer,"%d",refresh_rate);
-	mainWindowRefreshRateInput->value(buffer);
+	mainWindowRefreshRateInput->value(Poco::format("%d",refresh_rate).c_str());
 }
 
 /*
@@ -884,8 +844,8 @@ static int getCpuInfo(char **model_name)
 
 	*model_name = NULL;
 	while (line = fgets(buffer,sizeof(buffer),cpuinfo)) {
-		//printf("cores: %d  model name=%s\n",cores,*model_name);
-		//puts(line);
+		LOG_INFO("cores: %d  model name=%s",cores,*model_name);
+		LOG_INFO("%s",line);
 		if (strncmp(line,"processor",9) == 0)
 			++cores;
 		if (strncmp(line,"model name",10) == 0 && !*model_name) {
@@ -898,7 +858,7 @@ static int getCpuInfo(char **model_name)
 			}
 		}
 	}
-	//printf("cores: %d  model name=%s\n",cores,*model_name);
+	//LOG_INFO("cores: %d  model name=%s",cores,*model_name);
 
 	fclose(cpuinfo);
 	return cores;
@@ -919,7 +879,6 @@ static void callbackOnMainWindowClose(Fl_Widget *widget, void *)
 */
 static int runClientFrontend(bool fullscreen)
 {
-
 	/*
 	**	create the main window
 	*/
@@ -1041,8 +1000,7 @@ int runClient(const char *server,int port,bool fullscreen)
 	_server = (server) ? strdup(server) : "localhost";
 	memset(_track,0,sizeof(_track));
 
-	if (_debug)
-		printf("map: %d/%d/%d",MAP_WIDTH,MAP_HEIGHT,MAP_DEPTH);
+	LOG_INFO("map: %d/%d/%d",MAP_WIDTH,MAP_HEIGHT,MAP_DEPTH);
 
 	/*
 	**	start a thread with the socket communication

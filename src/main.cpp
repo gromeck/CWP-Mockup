@@ -33,9 +33,21 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <getopt.h>
+#include <Poco/Channel.h>
+#include <Poco/ConsoleChannel.h>
+#include <Poco/Logger.h>
 #include "common.h"
 #include "server.h"
 #include "client.h"
+
+using Poco::ConsoleChannel;
+using Poco::Logger;
+
+/*
+**	setup logging via Poco
+*/
+ConsoleChannel *_channel = new ConsoleChannel();
+Logger &_logger = Logger::create(__TITLE__,_channel,Poco::Message::PRIO_ERROR);
 
 bool _shutdown = false;
 bool _debug = false;
@@ -78,6 +90,9 @@ int main(int argc,char *argv[])
 	char *server = NULL;
 	int port = DEFAULT_PORT;
 	int fullscreen = false;
+	int logLevel = Poco::Message::PRIO_WARNING;
+
+	_logger.setLevel(logLevel);
 
 	char short_options[BUFSIZ];
 	struct option long_options[] = {
@@ -86,7 +101,7 @@ int main(int argc,char *argv[])
 		{ "server",		1,	0,	's' },
 		{ "port",		1,	0,	'p' },
 		{ "fullscreen",	0,	0,	'f' },
-		{ "debug",		0,	0,	'd' },
+		{ "verbose",	0,	0,	'v' },
 		{ NULL,			0,	0,	0	},
 	};
 
@@ -105,7 +120,8 @@ int main(int argc,char *argv[])
 			case 'V':	/*
 						**	print version and exit
 						*/
-						printf("*** %s Version %s ***\n",__TITLE__,__VERSION_NR__);
+						_logger.warning("*** " __TITLE__ " Version " __VERSION_NR__ " ***");
+						_logger.warning("(c) 2020 by Christian Lorenz");
 						printf("(c) 2020 by Christian Lorenz\n");
 						exit(0);
 						break;
@@ -130,15 +146,17 @@ int main(int argc,char *argv[])
 						*/
 						fullscreen = true;
 						break;
-			case 'd':	/*
-						**	print some debug
+			case 'v':	/*
+						**	be verbose
 						*/
-						_debug = true;
+						logLevel++;
+						_logger.setLevel(logLevel);
+						LOG_INFO("logLevel=%d",logLevel);
 						break;
 			default:	/*
 						**	usage
 						*/
-						fprintf(stderr,"%s: unknown option %c\n",__TITLE__,c);
+						LOG_ERROR("unknown option %c",c);
 			usage:		usage(argv[0]);
 						exit(-1);
 						break;
@@ -148,6 +166,7 @@ int main(int argc,char *argv[])
 	/*
 	**	set signal handlers
 	*/
+	LOG_INFO("installing signal handlers");
 	signal(SIGHUP,SIG_IGN);
 	signal(SIGINT,shutdown_handler);
 	signal(SIGQUIT,shutdown_handler);
@@ -162,8 +181,8 @@ int main(int argc,char *argv[])
 	signal(SIGPIPE,SIG_IGN);
 	signal(SIGVTALRM,SIG_IGN);
 
-	if (_debug)
-		printf("%s: running in %s mode with port %d\n",argv[0],(server) ? "client" : "server",port);
+	LOG_NOTICE("running in %s mode with port %d",
+		(std::string) ((server) ? "client" : "server"),port);
 
 	if (server)
 		runClient(server,port,fullscreen);

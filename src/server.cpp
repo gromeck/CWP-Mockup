@@ -172,21 +172,22 @@ static void *runServerTraffic(void *arg)
 				_track[n].last_update = now;
 
 				// print some information about the track status
-				if (_debug)
-					printf("[%04d] %s position=(%6.1f/%6.1f/%6.1f) heading=(%6.1f/%6.1f/%6.1f) @ %d distance=%6.1f prediction=(%6.1f/%6.1f/%6.1f)\n",
-							n,
-							_track[n].callsign,
-							_track[n].position.getX(),
-							_track[n].position.getY(),
-							_track[n].position.getZ(),
-							_track[n].heading.getX(),
-							_track[n].heading.getY(),
-							_track[n].heading.getZ(),
-							_track[n].speed,
-							distance,
-							_track[n].prediction.getX(),
-							_track[n].prediction.getY(),
-							_track[n].prediction.getZ());
+#if 0
+				LOG_INFO("[%04d] %s position=(%6.1f/%6.1f/%6.1f) heading=(%6.1f/%6.1f/%6.1f) @ %d distance=%6.1f prediction=(%6.1f/%6.1f/%6.1f)",
+						n,
+						(std::string) _track[n].callsign,
+						_track[n].position.getX(),
+						_track[n].position.getY(),
+						_track[n].position.getZ(),
+						_track[n].heading.getX(),
+						_track[n].heading.getY(),
+						_track[n].heading.getZ(),
+						_track[n].speed,
+						distance,
+						_track[n].prediction.getX(),
+						_track[n].prediction.getY(),
+						_track[n].prediction.getZ());
+#endif
 			}
 		}
 
@@ -196,8 +197,7 @@ static void *runServerTraffic(void *arg)
 		usleep(SERVER_TRACK_UPDATE_RATE * USEC_PER_MSEC);
 	}
 
-	if (_debug)
-		printf("*** shutting down thread runServerTraffic()\n");
+	LOG_NOTICE("shutting down thread runServerTraffic()");
 
 	return NULL;
 }
@@ -219,13 +219,12 @@ static void *runServerCommunication(void *arg)
 	socklen_t addr_len = sizeof(*addr);
 	int sockfd,connection;
 	FILE *connectionfd;
-	char buffer[256];
 
 	/*
 	**	create socket
 	*/
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("ERROR opening socket");
+		LOG_ERROR("socket() failed");
 		exit(1);
 	}
 
@@ -241,7 +240,7 @@ static void *runServerCommunication(void *arg)
 	**	bind the socket
 	*/
 	if (bind(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-		perror("ERROR on binding");
+		LOG_ERROR("bind failed");
 		exit(1);
 	}
 
@@ -257,18 +256,16 @@ static void *runServerCommunication(void *arg)
 		/*
 		**	accept connection
 		*/
-		if (_debug)
-			printf("waiting for incoming connection request ...\n");
+		LOG_INFO("waiting for incoming connection request ...");
 		if ((connection = accept(sockfd,(struct sockaddr *) &addr,&addr_len)) < 0) {
-			perror("ERROR on accept");
+			LOG_ERROR("accept() failed");
 		}
 		else {
 			if (!(connectionfd = fdopen(connection,"w+"))) {
-				perror("ERROR on fdopen");
+				LOG_ERROR("fdopen() failed");
 			}
 		}
-		if (_debug)
-			printf("connection established\n");
+		LOG_NOTICE("connection established");
 
 		/*
 		**	push the data to the client
@@ -276,8 +273,7 @@ static void *runServerCommunication(void *arg)
 		while (connectionfd && !_shutdown) {
 			int track;
 
-			if (_debug)
-				printf("sending track data ...\n");
+			LOG_INFO("sending track data ...");
 
 			if (fprintf(connectionfd,"TRACKS=%d\n",_tracks) < 0)
 				break;
@@ -316,8 +312,7 @@ static void *runServerCommunication(void *arg)
 		/*
 		**	close this connection
 		*/
-		if (_debug)
-			printf("closing connection\n");
+		LOG_NOTICE("closing connection");
 		if (connectionfd) {
 			fclose(connectionfd);
 			connectionfd = NULL;
@@ -327,8 +322,7 @@ static void *runServerCommunication(void *arg)
 			connection = -1;
 		}
 	}
-	if (_debug)
-		printf("*** shutting down thread runServerCommunication()\n");
+	LOG_NOTICE("shutting down thread runServerCommunication()");
 	return NULL;
 }
 
@@ -344,10 +338,7 @@ static Fl_Return_Button *setButton;
 
 static void updateNumTracksInput(int tracks)
 {
-	char buffer[10];
-
-	sprintf(buffer,"%d",tracks);
-	numTracksInput->value(buffer);
+	numTracksInput->value(Poco::format("%d",tracks).c_str());
 }
 
 static void clickedSetButton(Fl_Widget *widget)
