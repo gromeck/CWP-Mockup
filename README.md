@@ -110,7 +110,7 @@ In the lower part of the display, the current performance values are displayed, 
 The label is organized in three lines.
 
 <div style="float:left;">
-<img src="Ressources/Screenshots/CWP-Mockup-Screenshot-Display-Label-1.png" height="170px">
+<img src="Ressources/Screenshots/CWP-Mockup-Screenshot-Display-Label-1.png" height="250px">
 </div>
 
  1. callsign
