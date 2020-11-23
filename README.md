@@ -70,7 +70,7 @@ $ ./CWPMockUp
 The GUI allows to change the number of simulated tracks (from 1 to 3000).
 
 ## What does the server do?
-The server simulates the requested number of tracks. It uses an airspace of 500nm by 400nm with a maximum height of 40.000ft.
+The server simulates the requested number of tracks. It uses an airspace of 500nm by 400nm with a maximum height of 40,000ft.
 
 Each track position is initialized with a random position and height. Its speed is randomly set between 400 and 800kn. Its heading is also randomly set. The server also computes the predicted position of each track in 60 seconds.
 
@@ -91,7 +91,7 @@ The GUI allows to change the refresh rate on the display (from 10 to 5000ms).
 
 ## What does the client do?
 
-The client receives incoming track data and will update its own track file. It will set history dots (every 10.000ms). On every received track update, an collision detection is done: when ever another track is closer than 10nm, it tagged.
+The client receives incoming track data and will update its own track file. It will set history dots (every 10s). On every received track update, an collision detection is done: when ever another track is closer than 10nm, it tagged.
 
 The display is updated in the requested refresh rate. This update always updates all tracks including symbol, prediction, history dots, label and -- if set -- an collsion alarm.
 
@@ -117,7 +117,7 @@ The label is organized in three lines.
  1. speed (in knots) and age (in ms)
  1. height (shown as flightlevel, which is height in feet / 100)
  
-The age is the time between sending (not updating) the track from the server to the client, and the moment the track is drawn on the display. Whenever this time is equal or above 1.000ms the label is drawn in blue, instead of its standard color green.
+The age is the time between sending (not updating) the track from the server to the client, and the moment the track is drawn on the display. Whenever this time is equal or above 1000ms the label is drawn in blue, instead of its standard color green.
 
 The age gives a hint of the server and client processing speed respectivly load.
 
@@ -147,14 +147,14 @@ The server runs in the following threads:
 
 On a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz) it is possible to simultanously display:
 
- - 250 tracks with a refresh rate of 10ms/100FPS (overall CPU load <30%; bandwidth with X11 forwarding ~100Mbits/s)
- - 1.500 tracks with a refresh rate of 50ms/20FPS (overall CPU load <30%; bandwidth with X11 forwarding ~110Mbits/s)
- - 3.000 tracks with a refresh rate of 100ms/10FPS (overall CPU load <30%; bandwidth with X11 forwarding ~130Mbits/s)
- - 3.000 tracks with a refresh rate of 500ms/2FPS (overall CPU load <12%; bandwidth with X11 forwarding ~24Mbits/s)
- 
- A more realistic test case showed:
- 
- - 500 tracks with a refresh rate of 1.000ms/1FPS (overall CPU load <3%; bandwidth with X11 forwarding < 2.1Mbits/s)
+|# of Tracks|Refreshrate|FPS|CPU Load|bandwidth with X11 forwarding|
+|----------------:|----------------:|---:|--------:|-----------------------------:|
+||**[ms]**||**[%]**|**[MBits/s]**|
+|250|10|100|<30|100|
+|1500|50|20|<30|110|
+|3000|100|10|<30|130|
+|3000|500|2|<12|24|
+|500|1000|1|<3|2.1|
 
 In any of these test cases the full airspace was visible, so that in fact all tracks are drawn into the display.
 The limiting factor is the load of the X server. X11 Forwarding was done via a 1GBit/s LAN connection.
