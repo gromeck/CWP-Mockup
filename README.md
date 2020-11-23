@@ -145,7 +145,7 @@ The server runs in the following threads:
  - air traffic processing
  - GUI
 
-On a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz) it is possible to simultanously display:
+The following table gives an overview of the graphic thruput and performance of the CWP-MockUp on a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz).
 
 |# of Tracks|Refreshrate|FPS|CPU Load|bandwidth with X11 forwarding|
 |----------------:|----------------:|---:|--------:|-----------------------------:|
@@ -156,8 +156,9 @@ On a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz) it is possible to 
 |3000|500|2|<12|24|
 |500|1000|1|<3|2.1|
 
-In any of these test cases the full airspace was visible, so that in fact all tracks are drawn into the display.
-The limiting factor is the load of the X server. X11 Forwarding was done via a 1GBit/s LAN connection.
+In any of these test cases the full airspace was visible, so that in fact all tracks are drawn onto the display.
+The limiting factor is the load of the X server, which doesn't run multi-threaded.
+X11 Forwarding was done via a 1GBit/s LAN connection.
 
 ## Why is FLTK used?
 
