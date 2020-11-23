@@ -2,7 +2,7 @@
 
 A mockup for an ATC controller working position (CWP). It can be used as a test dummy for different display or hardware setups.
 
-It has no hardware dependency -- it's just uses FLTK and is more or less plain X11 -- no openGL/GLX. So it is even possible to forward the client with setting X11 display environment variable. And it still reaches real good performance. See the description below about performance.
+It has no hardware dependency -- it's just uses FLTK and is more or less plain X11 -- no openGL/GLX. So it is even possible to forward the client with setting X11 display environment variable. And it still reaches real good performance. See the section below about performance.
 
 <div style="float:left;">
 <img src="Ressources/Screenshots/CWP-Mockup-Screenshot-Display-1.png" height="500px">
