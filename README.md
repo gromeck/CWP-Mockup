@@ -14,11 +14,14 @@ This binary is then started as a server and a client. Both, server and client, h
 
 # Build the software
 
-Ensure that you got [FLTK](https://www.fltk.org/) V1.3.5 development environment installed.
+Ensure that you got
+[FLTK](https://www.fltk.org/) V1.3.5 and
+[POCO C++ Libraries](https://pocoproject.org/)
+development environment installed.
 To prepare the build environment on Debian do:
 
 ```
-apt -y install libfltk1.3-dev autoconf automake make g++
+apt -y install libfltk1.3-dev libpoco-dev autoconf automake make g++
 ```
 
 Enter the subdirectory `src/` and enter `./build.sh`. Add `--enable-static` to statically link the binary.
@@ -110,7 +113,7 @@ In the lower part of the display, the current performance values are displayed, 
 The label is organized in three lines.
 
 <div style="float:left;">
-<img src="Ressources/Screenshots/CWP-Mockup-Screenshot-Display-Label-1.png" height="170px">
+<img src="Ressources/Screenshots/CWP-Mockup-Screenshot-Display-Label-1.png" height="250px">
 </div>
 
  1. callsign
@@ -145,7 +148,7 @@ The server runs in the following threads:
  - air traffic processing
  - GUI
 
-On a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz) it is possible to simultanously display:
+The following table gives an overview of the graphic thruput and performance of the CWP-MockUp on a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz).
 
 |# of Tracks|Refreshrate|FPS|CPU Load|bandwidth with X11 forwarding|
 |----------------:|----------------:|---:|--------:|-----------------------------:|
@@ -156,8 +159,9 @@ On a low-cost system with an Intel Core i3 (4 cores @ 3.6GHz) it is possible to 
 |3000|500|2|<12|24|
 |500|1000|1|<3|2.1|
 
-In any of these test cases the full airspace was visible, so that in fact all tracks are drawn into the display.
-The limiting factor is the load of the X server. X11 Forwarding was done via a 1GBit/s LAN connection.
+In any of these test cases the full airspace was visible, so that in fact all tracks are drawn onto the display.
+The limiting factor is the load of the X server, which doesn't run multi-threaded.
+X11 Forwarding was done via a 1GBit/s LAN connection.
 
 ## Why is FLTK used?
 
