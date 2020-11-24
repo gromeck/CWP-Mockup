@@ -173,6 +173,7 @@ static void *runServerTraffic(void *arg)
 
 				// print some information about the track status
 #if 0
+				// disabled for now as the poco lib doesn't support 15 arguments :-(
 				LOG_INFO("[%04d] %s position=(%6.1f/%6.1f/%6.1f) heading=(%6.1f/%6.1f/%6.1f) @ %d distance=%6.1f prediction=(%6.1f/%6.1f/%6.1f)",
 						n,
 						(std::string) _track[n].callsign,
