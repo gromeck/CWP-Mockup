@@ -462,7 +462,7 @@ public:
 	/*
 	**	set the screen X offset
 	*/
-	void setScreenOffsetX(int offset_x)
+	inline void setScreenOffsetX(int offset_x)
 	{
 		this->screen_offset_x = offset_x;
 	}
@@ -470,7 +470,7 @@ public:
 	/*
 	**	set the screen Y offset
 	*/
-	void setScreenOffsetY(int offset_y)
+	inline void setScreenOffsetY(int offset_y)
 	{
 		this->screen_offset_y = offset_y;
 	}
@@ -478,7 +478,7 @@ public:
 	/*
 	**	compute a X coordinate on the map for the screen
 	*/
-	int mapXToScreen(double map_x)
+	inline int mapXToScreen(double map_x)
 	{
 		return (this->x() + this->screen_offset_x + (map_x * this->map_scale) / MAP_WIDTH  * this->w());
 	}
@@ -486,7 +486,7 @@ public:
 	/*
 	**	compute a width on the map for the screen
 	*/
-	int mapWToScreen(double map_width)
+	inline int mapWToScreen(double map_width)
 	{
 		return (map_width * this->map_scale) / MAP_WIDTH  * this->w();
 	}
@@ -494,7 +494,7 @@ public:
 	/*
 	**	compute a X coordinate on the screen for the map
 	*/
-	double mapScreenToX(int scrx)
+	inline double mapScreenToX(int scrx)
 	{
 		return (double) (scrx - this->x() - this->screen_offset_x) * MAP_WIDTH / this->w() / this->map_scale;
 	}
@@ -502,7 +502,7 @@ public:
 	/*
 	**	compute a height on the map for the screen
 	*/
-	int mapHToScreen(double map_height)
+	inline int mapHToScreen(double map_height)
 	{
 		return (map_height * this->map_scale) / MAP_HEIGHT  * this->h();
 	}
@@ -510,7 +510,7 @@ public:
 	/*
 	**	compute a Y coordinate on the map for the screen
 	*/
-	int mapYToScreen(double mapy)
+	inline int mapYToScreen(double mapy)
 	{
 		return (this->y() + this->screen_offset_y + (mapy * this->map_scale) / MAP_HEIGHT * this->h());
 	}
@@ -518,7 +518,7 @@ public:
 	/*
 	**	compute a Y coordinate on the screen for the map
 	*/
-	double mapScreenToY(int scry)
+	inline double mapScreenToY(int scry)
 	{
 		return (double) (scry - this->y() - this->screen_offset_y) * MAP_HEIGHT / this->h() / this->map_scale;
 	}
@@ -573,7 +573,7 @@ public:
 	/*
 	**	reset the zoom
 	*/
-	void mapZoomReset(void)
+	inline void mapZoomReset(void)
 	{
 		this->map_scale = 1;
 	}
@@ -697,8 +697,11 @@ public:
 		this->frames_between_info++;
 		this->rendering_time += (double) (now - start_rendering) / USEC_PER_SEC;
 		unsigned long delta = (double) (now - this->last_info) / USEC_PER_SEC;
-		
+
 		if (delta >= CLIENT_STATS_DISPPLAY_RATE) {
+			/*
+			**	update the statistics
+			*/
 			double fps = (delta > 0) ? (double) this->frames_between_info / delta : 0;
 
 			sprintf(this->info," Tracks:%d  Rendering Time:%.3fms  Refresh Rate:%.1fms  FPS:%.1f ",
@@ -761,7 +764,7 @@ static void refreshDisplay(void *)
 /*
 **	update the refresh rate on the screen
 */
-static void updateRefreshRateInput(int refresh_rate)
+static inline void updateRefreshRateInput(int refresh_rate)
 {
 	mainWindowRefreshRateInput->value(Poco::format("%d",refresh_rate).c_str());
 }
