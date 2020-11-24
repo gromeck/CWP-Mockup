@@ -26,6 +26,7 @@
 #include <Poco/Channel.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Logger.h>
+#include <Poco/Timestamp.h>
 
 #define __TITLE__		"CWP-Mockup"
 #define __VERSION_NR__	"0.1"
@@ -37,6 +38,7 @@
 */
 #define MSEC_PER_SEC        1000
 #define USEC_PER_MSEC       1000
+#define USEC_PER_SEC        (USEC_PER_MSEC * MSEC_PER_SEC)
 
 #define RANDOM(a,b)         ((a) + (random() % (unsigned long) ((b) - (a))))
 

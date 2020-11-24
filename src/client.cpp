@@ -31,8 +31,6 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <time.h>
-#include <sys/time.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <limits.h>
@@ -52,7 +50,7 @@
 
 static bool _connected = false;
 static bool _receiving = false;
-static struct timeval _last_update;
+static Poco::Timestamp _last_update;
 
 /****************************************************************************
 
@@ -67,18 +65,14 @@ static bool updateTrack(int idx,CLIENT_TRACK_UPDATE *track)
 	if (idx < 0 || idx >= TRACKS_MAX)
 		return false;
 
-	struct timeval now;
-	gettimeofday(&now,NULL);
+	Poco::Timestamp now;
 
 	if (_track[idx].valid) {
-		struct timeval history_delta,delta_tv;
+		Poco::Timestamp::TimeDiff delta_tv;
 
-		history_delta.tv_sec = CLIENT_TRACK_HISTORY_TIME / MSEC_PER_SEC;
-		history_delta.tv_usec = (CLIENT_TRACK_HISTORY_TIME - history_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
+		delta_tv = now - _track[idx].last_history_update;
 
-		timersub(&now,&_track[idx].last_history_update,&delta_tv);
-
-		if (timercmp(&delta_tv,&history_delta,>)) {
+		if (delta_tv > CLIENT_TRACK_HISTORY_TIME * USEC_PER_MSEC) {
 			/*
 			**	shift the history dots
 			*/
@@ -140,21 +134,11 @@ static CLIENT_TRACK *lookupTrack(double x,double y)
 */
 static void *runClientTracking(void *arg)
 {
-	struct timeval now,receiving_delta,costing_delta,invalid_delta;
-
-	receiving_delta.tv_sec = CLIENT_TRACK_COASTING_TIMEOUT / MSEC_PER_SEC;
-	receiving_delta.tv_usec = (CLIENT_TRACK_COASTING_TIMEOUT - costing_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
-	costing_delta.tv_sec = CLIENT_TRACK_COASTING_TIMEOUT / MSEC_PER_SEC;
-	costing_delta.tv_usec = (CLIENT_TRACK_COASTING_TIMEOUT - costing_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
-	invalid_delta.tv_sec = CLIENT_TRACK_INVALID_TIMEOUT / MSEC_PER_SEC;
-	invalid_delta.tv_usec = (CLIENT_TRACK_INVALID_TIMEOUT - invalid_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
-
 	while (!_shutdown) {
 		struct timeval delta_tv;
 
-		gettimeofday(&now,NULL);
-		timersub(&now,&_last_update,&delta_tv);
-		if (timercmp(&delta_tv,&receiving_delta,>)) {
+		Poco::Timestamp now;
+		if (now - _last_update > CLIENT_TRACK_RECEIVING_TIMEOUT * USEC_PER_MSEC) {
 			/*
 			**	it looks like we did not receiving data
 			*/
@@ -163,15 +147,13 @@ static void *runClientTracking(void *arg)
 
 		for (int idx = 0;idx < TRACKS_MAX;idx++) {
 			if (_track[idx].valid) {
-
 				/*
 				**	check for coasting/invalid because of missing updates
 				*/
-				timersub(&now,&_track[idx].last_update,&delta_tv);
-				if (timercmp(&delta_tv,&costing_delta,>)) {
+				if (now - _track[idx].last_update > CLIENT_TRACK_COASTING_TIMEOUT * USEC_PER_MSEC) {
 					_track[idx].coasting = true;
 				}
-				if (timercmp(&delta_tv,&invalid_delta,>)) {
+				if (now - _track[idx].last_update > CLIENT_TRACK_INVALID_TIMEOUT * USEC_PER_MSEC) {
 					_track[idx].valid = false;
 				}
 
@@ -279,8 +261,9 @@ static void *runClientCommunication(void *arg)
 				memset(&track,0,sizeof(track));
 				double posX,posY,posZ;
 				double preX,preY,preZ;
+				unsigned long timestamp;
 
-				if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf,%lu,%lu",
+				if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf,%lu",
 						&idx,
 						&track.callsign,
 						&posX,
@@ -290,7 +273,7 @@ static void *runClientCommunication(void *arg)
 						&preX,
 						&preY,
 						&preZ,
-						&track.timestamp.tv_sec,&track.timestamp.tv_usec) < 0) {
+						&timestamp) < 0) {
 					LOG_ERROR("received invalid line: %s",(std::string) line);
 				}
 				else {
@@ -299,6 +282,7 @@ static void *runClientCommunication(void *arg)
 					*/
 					track.position.set(posX,posY,posZ);
 					track.prediction.set(preX,preY,preZ);
+					track.timestamp = Poco::Timestamp(timestamp);
 					LOG_INFO("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)",
 							idx,(std::string) track.callsign,
 							track.position.getX(),
@@ -387,7 +371,7 @@ static void openTrackInfoWindow(CLIENT_TRACK *track)
 class airspaceWidget: public Fl_Box
 {
 private:
-	struct timeval last_info = { 0, 0 };
+	Poco::Timestamp last_info;
 	int frames_between_info = 0;
 	double rendering_time = 0;
 	char info[1000];
@@ -597,9 +581,7 @@ public:
 	void draw(void)
 	{
 		//LOG_INFO("airspaceWidget::draw(): ...");
-
-		struct timeval start_rendering;
-		gettimeofday(&start_rendering,NULL);
+		Poco::Timestamp start_rendering;
 
 		// set clipping to the widget area
 		fl_push_clip(x(),y(),w(),h());
@@ -657,21 +639,19 @@ public:
 
 				if (!_track[idx].coasting) {
 					// draw prediction line
-					fl_color(CLIENT_PREDICTION_LINE_COLOR);
-					fl_line_style(FL_SOLID,CLIENT_PREDICTION_LINE_THICKNESS,NULL);
-					fl_line(pos_x,pos_y,
-							this->mapXToScreen(_track[idx].track.prediction.getX()),
-							this->mapYToScreen(_track[idx].track.prediction.getY()));
+					if (_track[idx].track.prediction.getX() > 0 || _track[idx].track.prediction.getY() > 0 || _track[idx].track.prediction.getX()) {
+						fl_color(CLIENT_PREDICTION_LINE_COLOR);
+						fl_line_style(FL_SOLID,CLIENT_PREDICTION_LINE_THICKNESS,NULL);
+						fl_line(pos_x,pos_y,
+								this->mapXToScreen(_track[idx].track.prediction.getX()),
+								this->mapYToScreen(_track[idx].track.prediction.getY()));
+					}
 
 					// draw the label
 					char label[CLIENT_LABEL_LINES][50];
 					int linenr = 0;
-					struct timeval now;
-					struct timeval delta;
-
-					gettimeofday(&now,NULL);
-					timersub(&now,&_track[idx].track.timestamp,&delta);
-					unsigned long age = delta.tv_sec * MSEC_PER_SEC + delta.tv_usec / USEC_PER_MSEC;
+					Poco::Timestamp now;
+					unsigned long age = (now - _track[idx].track.timestamp) / USEC_PER_MSEC;
 
 					fl_color(CLIENT_LABEL_LINE_COLOR);
 					fl_line_style(FL_SOLID,CLIENT_LABEL_LINE_THICKNESS,NULL);
@@ -712,22 +692,17 @@ public:
 		}
 
 		// compute some statistic information
-		struct timeval now,delta_tv;
-		double delta,fps;
+		Poco::Timestamp now;
 
-		gettimeofday(&now,NULL);
-
-		timersub(&now,&start_rendering,&delta_tv);
-		this->rendering_time += delta_tv.tv_sec + (double) delta_tv.tv_usec / USEC_PER_MSEC / MSEC_PER_SEC;
-
-		timersub(&now,&this->last_info,&delta_tv);
-		delta = delta_tv.tv_sec + (double) delta_tv.tv_usec / USEC_PER_MSEC / MSEC_PER_SEC;
 		this->frames_between_info++;
-
+		this->rendering_time += (double) (now - start_rendering) / USEC_PER_SEC;
+		unsigned long delta = (double) (now - this->last_info) / USEC_PER_SEC;
+		
 		if (delta >= CLIENT_STATS_DISPPLAY_RATE) {
-			fps = (delta > 0) ? (double) this->frames_between_info / delta : 0;
+			double fps = (delta > 0) ? (double) this->frames_between_info / delta : 0;
+
 			sprintf(this->info," Tracks:%d  Rendering Time:%.3fms  Refresh Rate:%.1fms  FPS:%.1f ",
-					tracks,this->rendering_time / this->frames_between_info * MSEC_PER_SEC,
+					tracks,this->rendering_time / this->frames_between_info,
 					MSEC_PER_SEC / fps,fps);
 			this->rendering_time = 0;
 			this->frames_between_info = 0;

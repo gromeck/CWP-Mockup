@@ -83,8 +83,9 @@
 // some timing constants
 #define CLIENT_TRACK_UPDATE_RATE            1000    // ms
 #define CLIENT_TRACK_COASTING_TIMEOUT       3000    // ms
-#define CLIENT_TRACK_INVALID_TIMEOUT        10000   // ms
 #define CLIENT_TRACK_TOOOLD_TIMEOUT         1000    // ms
+#define CLIENT_TRACK_INVALID_TIMEOUT        5000    // ms
+#define CLIENT_TRACK_RECEIVING_TIMEOUT      10000   // ms
 
 // short term conflict alert
 #define CLIENT_STCA_DISTANCE                5.0     // nm
@@ -125,7 +126,7 @@ typedef struct {
     Coordinate position;
     int speed;
     Coordinate prediction;
-    struct timeval timestamp;
+    Poco::Timestamp timestamp;
 } CLIENT_TRACK_UPDATE;
 
 typedef struct {
@@ -134,8 +135,8 @@ typedef struct {
     bool stca;
     int history_dots;
     Coordinate history[CLIENT_HISTORY_DOTS_MAX];
-    struct timeval last_history_update;
-    struct timeval last_update;
+    Poco::Timestamp last_history_update;
+    Poco::Timestamp last_update;
     CLIENT_TRACK_UPDATE track;
 } CLIENT_TRACK;
 

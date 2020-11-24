@@ -50,7 +50,7 @@ typedef struct {
 	Coordinate heading;
 	Coordinate prediction;
 	int speed;
-	struct timeval last_update;
+	Poco::Timestamp last_update;
 } SERVER_TRACK;
 
 int runServer(int port);

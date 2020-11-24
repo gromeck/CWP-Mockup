@@ -27,8 +27,6 @@
 #include <stdio.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <time.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include <math.h>
 #include <FL/Fl.H>
@@ -91,7 +89,7 @@ static SERVER_TRACK *initilize_track(int idx)
 	/*
 	**	timestamp
 	*/
-	gettimeofday(&track.last_update,NULL);
+	track.last_update = Poco::Timestamp();
 
 	return &track;
 }
@@ -103,8 +101,7 @@ static void *runServerTraffic(void *arg)
 {
 	while (!_shutdown) {
 		int n;
-		struct timeval now;
-		struct timeval max_delta;
+		Poco::Timestamp now;
 
 		/*
 		**	check the number of requested tracks
@@ -131,20 +128,15 @@ static void *runServerTraffic(void *arg)
 		/*
 		**	move all tracks
 		*/
-		gettimeofday(&now,NULL);
-		max_delta.tv_sec = SERVER_TRACK_UPDATE_RATE / MSEC_PER_SEC;
-		max_delta.tv_usec = (SERVER_TRACK_UPDATE_RATE - max_delta.tv_sec * MSEC_PER_SEC) / USEC_PER_MSEC;
 		for (n = 0;n < _tracks;n++) {
-			struct timeval delta_tv;
+			Poco::Timestamp::TimeDiff delta = now - _track[n].last_update;
 
-			timersub(&now,&_track[n].last_update,&delta_tv);
-			if (timercmp(&delta_tv,&max_delta,>)) {
+			if (delta > SERVER_TRACK_UPDATE_RATE * USEC_PER_MSEC) {
 				/*
 				**	this track has to be moved
 				*/
 				double distance;
 				double scale;
-				double delta_time = delta_tv.tv_sec + (double) delta_tv.tv_usec / USEC_PER_MSEC / MSEC_PER_SEC;
 
 				// compute the distance to the heading position
 				distance = _track[n].position.getDistance(_track[n].heading);
@@ -161,7 +153,7 @@ static void *runServerTraffic(void *arg)
 				distance = _track[n].position.getDistance(_track[n].heading);
 
 				// compute the new position
-				scale = (double) KNOTS2NMS(_track[n].speed) * delta_time / distance;
+				scale = (double) KNOTS2NMS(_track[n].speed) * delta / USEC_PER_SEC / distance;
 				_track[n].position = _track[n].position + (_track[n].heading - _track[n].position) * scale;
 
 				// compute the prediction
@@ -279,10 +271,9 @@ static void *runServerCommunication(void *arg)
 			if (fprintf(connectionfd,"TRACKS=%d\n",_tracks) < 0)
 				break;
 			for (track = 0;track < _tracks;track++) {
-				struct timeval now;
+				Poco::Timestamp now;
 
-				gettimeofday(&now,NULL);
-				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f,%lu,%lu\n",
+				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f,%lu\n",
 					track,
 					_track[track].callsign,
 					_track[track].position.getX(),
@@ -292,7 +283,7 @@ static void *runServerCommunication(void *arg)
 					_track[track].prediction.getX(),
 					_track[track].prediction.getY(),
 					_track[track].prediction.getZ(),
-					now.tv_sec,now.tv_usec) < 0)
+					(unsigned long) now.epochMicroseconds()) < 0)
 				break;
 			}
 			if (track < _tracks) {
