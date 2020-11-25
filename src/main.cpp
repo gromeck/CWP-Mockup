@@ -188,4 +188,9 @@ int main(int argc,char *argv[])
 		runClient(server,port,fullscreen);
 	else
 		runServer(port);
+
+	/*
+	**	enforce other threads to terminate
+	*/
+	_shutdown = true;
 }/**/

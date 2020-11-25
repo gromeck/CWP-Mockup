@@ -28,13 +28,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <limits.h>
 #include <math.h>
+#include <Poco/Timestamp.h>
+#include <Poco/Net/DNS.h>
+#include <Poco/Net/HostEntry.h>
+#include <Poco/Net/SocketAddress.h>
+#include <Poco/Net/StreamSocket.h>
+#include <Poco/Net/SocketStream.h>
+#include <Poco/Net/HTTPClientSession.h>
+#include <Poco/Net/HTTPRequest.h>
+#include <Poco/Net/HTTPResponse.h>
+#include <Poco/URI.h>
+#include <Poco/DOM/DOMParser.h>
+#include <Poco/DOM/Document.h>
+#include <Poco/DOM/Element.h>
+#include <Poco/DOM/Node.h>
+#include <Poco/DOM/NodeIterator.h>
+#include <Poco/DOM/NodeFilter.h>
+#include <Poco/SAX/InputSource.h>
 #include <FL/Fl.H>
 #include <FL/names.h>
 #include <FL/Fl_Double_Window.H>
@@ -135,9 +149,8 @@ static CLIENT_TRACK *lookupTrack(double x,double y)
 static void *runClientTracking(void *arg)
 {
 	while (!_shutdown) {
-		struct timeval delta_tv;
-
 		Poco::Timestamp now;
+
 		if (now - _last_update > CLIENT_TRACK_RECEIVING_TIMEOUT * USEC_PER_MSEC) {
 			/*
 			**	it looks like we did not receiving data
@@ -192,130 +205,130 @@ static const char *_server = NULL;
 */
 static void *runClientCommunication(void *arg)
 {
-	struct sockaddr_in serv_addr;
-	struct sockaddr *addr;
-	struct hostent *server;
-	socklen_t addr_len = sizeof(*addr);
-	int sockfd = -1;
-	FILE *connectionfd = NULL;
-	char buffer[256];
-
-	/*
-	**	lookup the host
-	*/
-    if ((server = gethostbyname(_server)) == NULL) {
-        perror("ERROR, no such host");
-        exit(0);
-    }
-
 	while (!_shutdown) {
-		/*
-		**	create socket
-		*/
-		if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-			perror("ERROR opening socket");
-			break;
-		}
-
-		/*
-		**	Initialize socket structure
-		*/
-		bzero((char *) &serv_addr, sizeof(serv_addr));
-		serv_addr.sin_family = AF_INET;
-		bcopy((char *) server->h_addr,(char *) &serv_addr.sin_addr.s_addr,server->h_length);
-		serv_addr.sin_port = htons(_port);
-
-		/*
-		**	connect to the socket
-		*/
-		if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-			if (_debug)
-				perror("ERROR on connect");
-			close(sockfd);
-			sockfd = -1;
-		}
-		else {
+		try {
 			/*
-			**	dup the fd to use streams
+			**	lookup the first IPv4 address
 			*/
-			if (!(connectionfd = fdopen(sockfd,"r"))) {
-				if (_debug)
-					perror("ERROR on fdopen");
+			std::string ipaddr;
+			Poco::Net::HostEntry const &host = Poco::Net::DNS::hostByName(_server,Poco::Net::DNS::DNS_HINT_AI_V4MAPPED);
+			Poco::Net::HostEntry::AddressList const &addresses = host.addresses();
+			Poco::Net::HostEntry::AddressList::const_iterator address_it;
+			for (address_it = addresses.begin();address_it != addresses.end();address_it++) {
+				LOG_NOTICE("Address: %s  isIPv4Compatible: %b",address_it->toString(),address_it->isIPv4Mapped());
+				if (address_it->isIPv4Mapped()) {
+					ipaddr = address_it->toString();
+					break;
+				}
+			}
+
+			/*
+			**	setup the URI
+			**
+			**	Note: we will use the ipaddr to connect the service to ensure that we use IPv4
+			*/
+			Poco::URI uri;
+			uri.setScheme((std::string) "http");
+			uri.setHost(ipaddr);
+			uri.setPort(_port);
+			uri.setPath("/tracks/");
+			LOG_NOTICE("URI: %s",uri.toString());
+
+			/*
+			**	setup the client session and the request
+			*/
+			Poco::Net::HTTPClientSession client(uri.getHost(),uri.getPort());
+			Poco::Net::HTTPRequest request(
+				Poco::Net::HTTPRequest::HTTP_GET,
+				uri.getPathAndQuery(),
+				Poco::Net::HTTPRequest::HTTPMessage::HTTP_1_1);
+			Poco::Net::HTTPResponse response;
+
+			LOG_NOTICE("requesting tracks from %s ...",request.getURI());
+
+			/*
+			**	send the request
+			*/
+			client.sendRequest(request);
+			std::istream &in = client.receiveResponse(response);
+			LOG_NOTICE("received response: %d %s",(int) response.getStatus(),response.getReason());
+			if (response.getStatus() == Poco::Net::HTTPResponse::HTTP_OK) {
+				/*
+				**	parses the XML answer
+				*/
+				_connected = true;
+				Poco::XML::DOMParser parser;
+				parser.setFeature(Poco::XML::DOMParser::FEATURE_FILTER_WHITESPACE, true);
+				parser.setFeature(Poco::XML::XMLReader::FEATURE_NAMESPACES, false);
+				Poco::XML::InputSource source(in);
+				Poco::AutoPtr<Poco::XML::Document> document = parser.parse(&source);
+
+				/*
+				**	process the XML document
+				*/
+				Poco::XML::NodeIterator it(document, Poco::XML::NodeFilter::SHOW_ELEMENT);
+
+				for (Poco::XML::Node *node = it.nextNode();node;node = it.nextNode()) {
+					if (node->nodeName() == "tracks") {
+						for (Poco::XML::Node *track = node->firstChild();track;track = track->nextSibling()) {
+							Poco::XML::Element *element =
+								static_cast<Poco::XML::Element *>(track);
+
+							LOG_NOTICE("index=%s  callsign=%s",
+								element->getAttribute("index"),
+								element->getAttribute("callsign"));
+
+							try {
+								/*
+								**	setup the track update
+								*/
+								CLIENT_TRACK_UPDATE track_update;
+								memset(&track_update,0,sizeof(track_update));
+
+								strcpy(track_update.callsign,element->getAttribute("callsign").c_str());
+								track_update.position.set(
+										std::stod(element->getAttribute("positionX")),
+										std::stod(element->getAttribute("positionY")),
+										std::stod(element->getAttribute("positionZ")));
+								track_update.speed = std::stod(element->getAttribute("speed"));
+								track_update.prediction.set(
+										std::stod(element->getAttribute("predictionX")),
+										std::stod(element->getAttribute("predictionY")),
+										std::stod(element->getAttribute("predictionZ")));
+								if (element->getAttribute("timestamp") != "")
+									track_update.timestamp = Poco::Timestamp(std::stoul(element->getAttribute("timestamp")));
+
+								/*
+								**	ok, finally update the track
+								*/
+								updateTrack(std::stoi(element->getAttribute("index")),&track_update);
+							}
+							catch (std::invalid_argument e) {
+								/*
+								**	something went wrong
+								*/
+								LOG_ERROR("conversion problem:");
+							}
+						}
+					}
+				}
 			}
 			else
-				_connected = true;
+				LOG_NOTICE("received bad response: %d %s",response.getStatus(),response.getReason());
 		}
-
-		/*
-		**	read the data to the client
-		*/
-		while (connectionfd && !_shutdown) {
-			int  idx;
-			CLIENT_TRACK_UPDATE track;
-			char line[1024];
-
-			LOG_INFO("waiting for track data");
-			if (fgets(line,sizeof(line),connectionfd)) {
-				// parse the received content
-				LOG_INFO("fgets(): %s",(std::string) line);
-				memset(&track,0,sizeof(track));
-				double posX,posY,posZ;
-				double preX,preY,preZ;
-				unsigned long timestamp;
-
-				if (sscanf(line,"TRACK=%d: %7s,%lf,%lf,%lf,%d,%lf,%lf,%lf,%lu",
-						&idx,
-						&track.callsign,
-						&posX,
-						&posY,
-						&posZ,
-						&track.speed,
-						&preX,
-						&preY,
-						&preZ,
-						&timestamp) < 0) {
-					LOG_ERROR("received invalid line: %s",(std::string) line);
-				}
-				else {
-					/*
-					**	process this valid track
-					*/
-					track.position.set(posX,posY,posZ);
-					track.prediction.set(preX,preY,preZ);
-					track.timestamp = Poco::Timestamp(timestamp);
-					LOG_INFO("received: idx=%d callsign=%s position=(%6.1f/%6.1f/%6.1f) speed=%d  prediction=(%6.1f/%6.1f/%6.1f)",
-							idx,(std::string) track.callsign,
-							track.position.getX(),
-							track.position.getY(),
-							track.position.getZ(),
-							track.speed,
-							track.prediction.getX(),
-							track.prediction.getY(),
-							track.prediction.getZ());
-					updateTrack(idx,&track);
-				}
-			}
-			else {
-				LOG_ERROR("fgets() failed");
-				break;
-			}
-		}
-
-		// disconnect
-		_connected = false;
-		LOG_NOTICE("shutting down connection to server");
-		if (connectionfd) {
-			fclose(connectionfd);
-			connectionfd = NULL;
-		}
-		if (sockfd > 0) {
-			close(sockfd);
-			sockfd = -1;
+		catch (Poco::Exception& exc) {
+			/*
+			**	something went wrong
+			*/
+			LOG_ERROR("network exception: %s",exc.displayText());
+			_connected = false;
 		}
 
 		// wait before reconnect
-		sleep(1);
+		usleep(CLIENT_COMMUNICATION_UPDATE_RATE * USEC_PER_MSEC);
 	}
+
+	LOG_NOTICE("shutting down thread runClientCommunication()");
 	return NULL;
 }
 
@@ -661,7 +674,7 @@ public:
 					sprintf(label[linenr++],"%d %lu",_track[idx].track.speed,age);
 					sprintf(label[linenr++],"%d",(int) FT2FL(NM2FT(_track[idx].track.position.getZ())));
 
-					fl_color((age < CLIENT_TRACK_TOOOLD_TIMEOUT) ? CLIENT_LABEL_COLOR : CLIENT_LABEL_COLOR_OLD);
+					fl_color((age < CLIENT_COMMUNICATION_UPDATE_RATE + _refresh_rate + CLIENT_TRACK_TOOOLD_TOLERANCE) ? CLIENT_LABEL_COLOR : CLIENT_LABEL_COLOR_OLD);
 					fl_font(CLIENT_LABEL_FONTFACE,CLIENT_LABEL_FONTSIZE);
 					for (linenr = 0;linenr < CLIENT_LABEL_LINES;linenr++)
 						fl_draw(label[linenr],pos_x + CLIENT_LABEL_OFFSET_X,pos_y + CLIENT_LABEL_OFFSET_Y + linenr * fl_height());
@@ -695,17 +708,17 @@ public:
 		Poco::Timestamp now;
 
 		this->frames_between_info++;
-		this->rendering_time += (double) (now - start_rendering) / USEC_PER_SEC;
-		unsigned long delta = (double) (now - this->last_info) / USEC_PER_SEC;
+		this->rendering_time += (double) (now - start_rendering) / Poco::Timestamp::resolution();
+		double delta = (double) (now - this->last_info) / Poco::Timestamp::resolution();
 
-		if (delta >= CLIENT_STATS_DISPLAY_RATE) {
+		if (delta >= (double) CLIENT_STATS_DISPLAY_RATE / MSEC_PER_SEC) {
 			/*
 			**	update the statistics
 			*/
 			double fps = (delta > 0) ? (double) this->frames_between_info / delta : 0;
 
 			sprintf(this->info," Tracks:%d  Rendering Time:%.3fms  Refresh Rate:%.1fms  FPS:%.1f ",
-					tracks,this->rendering_time / this->frames_between_info,
+					tracks,this->rendering_time / this->frames_between_info * MSEC_PER_SEC,
 					MSEC_PER_SEC / fps,fps);
 			this->rendering_time = 0;
 			this->frames_between_info = 0;

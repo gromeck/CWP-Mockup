@@ -29,6 +29,21 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <math.h>
+#include <Poco/Timestamp.h>
+#include <Poco/Net/ServerSocket.h>
+#include <Poco/Net/StreamSocket.h>
+#include <Poco/Net/HTTPServer.h>
+#include <Poco/Net/HTTPRequestHandler.h>
+#include <Poco/Net/HTTPRequestHandlerFactory.h>
+#include <Poco/Net/HTTPResponse.h>
+#include <Poco/Net/HTTPServerRequest.h>
+#include <Poco/Net/HTTPServerResponse.h>
+#include <Poco/Util/ServerApplication.h>
+#include <Poco/DOM/Document.h>
+#include <Poco/DOM/Element.h>
+#include <Poco/DOM/Node.h>
+#include <Poco/DOM/DOMWriter.h>
+#include <Poco/XML/XMLWriter.h>
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Input.H>
@@ -37,6 +52,7 @@
 #include <FL/Fl_Return_Button.H>
 #include <FL/Fl_Box.H>
 #include <FL/fl_ask.H>
+#include <iostream>
 #include "common.h"
 #include "server.h"
 
@@ -162,25 +178,6 @@ static void *runServerTraffic(void *arg)
 
 				// mark the track as updated
 				_track[n].last_update = now;
-
-				// print some information about the track status
-#if 0
-				// disabled for now as the poco lib doesn't support 15 arguments :-(
-				LOG_INFO("[%04d] %s position=(%6.1f/%6.1f/%6.1f) heading=(%6.1f/%6.1f/%6.1f) @ %d distance=%6.1f prediction=(%6.1f/%6.1f/%6.1f)",
-						n,
-						(std::string) _track[n].callsign,
-						_track[n].position.getX(),
-						_track[n].position.getY(),
-						_track[n].position.getZ(),
-						_track[n].heading.getX(),
-						_track[n].heading.getY(),
-						_track[n].heading.getZ(),
-						_track[n].speed,
-						distance,
-						_track[n].prediction.getX(),
-						_track[n].prediction.getY(),
-						_track[n].prediction.getZ());
-#endif
 			}
 		}
 
@@ -200,120 +197,109 @@ static void *runServerTraffic(void *arg)
  S O C K E T   C O M M U N I C A T I O N
 
 ****************************************************************************/
+
 static int _port = 0;
 
+class myHttpRequestHandler : public Poco::Net::HTTPRequestHandler
+{
+public:
+	virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPServerResponse &resp)
+	{
+		Poco::Timestamp now;
+
+		/*
+		**	create an XML document with all the tracks
+		*/
+		LOG_NOTICE("DOM: creating XML document");
+		Poco::XML::Document* doc = new Poco::XML::Document();
+
+		/*
+		**	add the numer of tracks
+		*/
+		LOG_NOTICE("DOM: adding tracks element");
+		Poco::XML::Element* tracks = doc->createElement("tracks");
+		tracks->setAttribute("number",std::to_string(_tracks));
+		doc->appendChild(tracks)->release();
+
+		/*
+		**	add all tracks
+		*/
+		for (int n = 0;n < _tracks;n++) {
+			LOG_NOTICE("DOM: adding track element");
+			Poco::XML::Element* track = doc->createElement("track");
+			tracks->appendChild(track)->release();
+
+			track->setAttribute("index",std::to_string(n));
+			track->setAttribute("callsign",_track[n].callsign);
+			track->setAttribute("positionX",std::to_string(_track[n].position.getX()));
+			track->setAttribute("positionY",std::to_string(_track[n].position.getY()));
+			track->setAttribute("positionZ",std::to_string(_track[n].position.getZ()));
+			track->setAttribute("speed",std::to_string(_track[n].speed));
+			track->setAttribute("predictionX",std::to_string(_track[n].prediction.getX()));
+			track->setAttribute("predictionY",std::to_string(_track[n].prediction.getY()));
+			track->setAttribute("predictionZ",std::to_string(_track[n].prediction.getZ()));
+			track->setAttribute("timestamp",std::to_string(now.epochMicroseconds()));
+		}
+
+		/*
+		**	sending response
+		*/
+		LOG_NOTICE("HTTP: sending reply");
+		resp.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
+		resp.setContentType("text/xml");
+		//resp.setContentLength(payload.size());
+		std::ostream &out = resp.send();
+
+		/*
+		**	write the XML to the socket
+		*/
+		LOG_NOTICE("HTTP: sending XML document");
+
+		Poco::XML::DOMWriter writer;
+		writer.setNewLine("\n");
+		writer.setOptions(Poco::XML::XMLWriter::PRETTY_PRINT);
+		writer.writeNode(out,doc);
+
+		LOG_NOTICE("HTTP: flushing output");
+
+		out.flush();
+	}
+};
+
 /*
-**	list on the given port
+**	handle the requests
+*/
+class myHttpRequestHandlerFactory: public Poco::Net::HTTPRequestHandlerFactory
+{
+public:
+	virtual Poco::Net::HTTPRequestHandler* createRequestHandler(const Poco::Net::HTTPServerRequest &request)
+	{
+		// currently we will reply always with the tracklist
+		LOG_NOTICE("serving request to %s",request.getURI());
+    	return new myHttpRequestHandler;
+  	}
+};
+
+/*
+**	run the listener as an HTTP server
 */
 static void *runServerCommunication(void *arg)
 {
-	struct sockaddr_in serv_addr;
-	struct sockaddr *addr;
-	socklen_t addr_len = sizeof(*addr);
-	int sockfd,connection;
-	FILE *connectionfd;
-
-	/*
-	**	create socket
-	*/
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		LOG_ERROR("socket() failed");
-		exit(1);
+	try {
+		Poco::Net::HTTPServerParams* params = new Poco::Net::HTTPServerParams;
+		params->setMaxQueued(100);
+		params->setMaxThreads(16);
+		Poco::Net::ServerSocket socket(_port);
+		Poco::Net::HTTPServer srv(new myHttpRequestHandlerFactory(), socket, params);
+		srv.start();
+		while (!_shutdown)
+			sleep(1);
+		srv.stop();
+	}
+	catch (Poco::Exception& exc) {
+		LOG_ERROR("network exception: %s",exc.displayText());
 	}
 
-	/*
-	**	Initialize socket structure
-	*/
-	bzero((char *) &serv_addr, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	serv_addr.sin_port = htons(_port);
-
-	/*
-	**	bind the socket
-	*/
-	if (bind(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-		LOG_ERROR("bind failed");
-		exit(1);
-	}
-
-	/*
-	**	listen on the socket
-	*/
-	if (listen(sockfd,5) < 0) {
-		perror("ERROR on binding");
-		exit(1);
-	}
-
-	while (!_shutdown) {
-		/*
-		**	accept connection
-		*/
-		LOG_INFO("waiting for incoming connection request ...");
-		if ((connection = accept(sockfd,(struct sockaddr *) &addr,&addr_len)) < 0) {
-			LOG_ERROR("accept() failed");
-		}
-		else {
-			if (!(connectionfd = fdopen(connection,"w+"))) {
-				LOG_ERROR("fdopen() failed");
-			}
-		}
-		LOG_NOTICE("connection established");
-
-		/*
-		**	push the data to the client
-		*/
-		while (connectionfd && !_shutdown) {
-			int track;
-
-			LOG_INFO("sending track data ...");
-
-			if (fprintf(connectionfd,"TRACKS=%d\n",_tracks) < 0)
-				break;
-			for (track = 0;track < _tracks;track++) {
-				Poco::Timestamp now;
-
-				if (fprintf(connectionfd,"TRACK=%d: %s,%f,%f,%f,%d,%f,%f,%f,%lu\n",
-					track,
-					_track[track].callsign,
-					_track[track].position.getX(),
-					_track[track].position.getY(),
-					_track[track].position.getZ(),
-					_track[track].speed,
-					_track[track].prediction.getX(),
-					_track[track].prediction.getY(),
-					_track[track].prediction.getZ(),
-					(unsigned long) now.epochMicroseconds()) < 0)
-				break;
-			}
-			if (track < _tracks) {
-				/*
-				**	we were not able to send all data
-				*/
-				break;
-			}
-			if (fflush(connectionfd) < 0)
-				break;
-
-			/*
-			**	wait some time
-			*/
-			usleep(SERVER_COMMUNICATION_UPDATE_RATE * USEC_PER_MSEC);
-		}
-
-		/*
-		**	close this connection
-		*/
-		LOG_NOTICE("closing connection");
-		if (connectionfd) {
-			fclose(connectionfd);
-			connectionfd = NULL;
-		}
-		if (connection > 0) {
-			close(connection);
-			connection = -1;
-		}
-	}
 	LOG_NOTICE("shutting down thread runServerCommunication()");
 	return NULL;
 }

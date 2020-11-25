@@ -81,10 +81,11 @@
 #define CLIENT_HISTORY_THICKNESS            2       // px
 
 // some timing constants
+#define CLIENT_COMMUNICATION_UPDATE_RATE	1000    // ms
 #define CLIENT_TRACK_UPDATE_RATE            1000    // ms
-#define CLIENT_TRACK_COASTING_TIMEOUT       3000    // ms
-#define CLIENT_TRACK_TOOOLD_TIMEOUT         1000    // ms
-#define CLIENT_TRACK_INVALID_TIMEOUT        5000    // ms
+#define CLIENT_TRACK_COASTING_TIMEOUT       5000    // ms
+#define CLIENT_TRACK_TOOOLD_TOLERANCE       100     // ms
+#define CLIENT_TRACK_INVALID_TIMEOUT        10000    // ms
 #define CLIENT_TRACK_RECEIVING_TIMEOUT      10000   // ms
 
 // short term conflict alert
@@ -101,7 +102,7 @@
 #define CLIENT_NODATA_MESSAGE_NOCONN        " NO SERVER CONNECTION "
 
 // information
-#define CLIENT_STATS_DISPLAY_RATE           1.0 // seconds
+#define CLIENT_STATS_DISPLAY_RATE           1000    // ms
 #define CLIENT_STATS_FOREGROUND             FL_WHITE
 #define CLIENT_STATS_BACKGROUND             FL_DARK2
 #define CLIENT_STATS_FONTFACE               FL_HELVETICA

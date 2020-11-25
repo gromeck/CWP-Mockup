@@ -32,11 +32,6 @@
 #define SERVER_TRACK_UPDATE_RATE   			500
 
 /*
-**	update rate for the track transmission (in ms)
-*/
-#define SERVER_COMMUNICATION_UPDATE_RATE	1000
-
-/*
 **	if we are close to the headed position, we will bounce
 */
 #define SERVER_DISTANCE_REACHED				5
