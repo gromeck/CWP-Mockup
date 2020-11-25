@@ -101,7 +101,7 @@
 #define CLIENT_NODATA_MESSAGE_NOCONN        " NO SERVER CONNECTION "
 
 // information
-#define CLIENT_STATS_DISPPLAY_RATE          1.0 // seconds
+#define CLIENT_STATS_DISPLAY_RATE           1.0 // seconds
 #define CLIENT_STATS_FOREGROUND             FL_WHITE
 #define CLIENT_STATS_BACKGROUND             FL_DARK2
 #define CLIENT_STATS_FONTFACE               FL_HELVETICA

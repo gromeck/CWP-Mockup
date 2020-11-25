@@ -698,7 +698,7 @@ public:
 		this->rendering_time += (double) (now - start_rendering) / USEC_PER_SEC;
 		unsigned long delta = (double) (now - this->last_info) / USEC_PER_SEC;
 
-		if (delta >= CLIENT_STATS_DISPPLAY_RATE) {
+		if (delta >= CLIENT_STATS_DISPLAY_RATE) {
 			/*
 			**	update the statistics
 			*/
