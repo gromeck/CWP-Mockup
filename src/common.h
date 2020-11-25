@@ -26,10 +26,10 @@
 #include <Poco/Channel.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Logger.h>
-#include <Poco/Timestamp.h>
 
-#define __TITLE__		"CWP-Mockup"
-#define __VERSION_NR__	"0.1"
+#define __TITLE__		    "CWP-Mockup"
+#define __VERSION_NR__	    "0.1"
+
 
 #define DEFAULT_PORT    	2566
 
