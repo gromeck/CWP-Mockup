@@ -85,7 +85,7 @@
 #define CLIENT_TRACK_UPDATE_RATE            1000    // ms
 #define CLIENT_TRACK_COASTING_TIMEOUT       5000    // ms
 #define CLIENT_TRACK_TOOOLD_TOLERANCE       100     // ms
-#define CLIENT_TRACK_INVALID_TIMEOUT        10000    // ms
+#define CLIENT_TRACK_INVALID_TIMEOUT        10000   // ms
 #define CLIENT_TRACK_RECEIVING_TIMEOUT      10000   // ms
 
 // short term conflict alert
@@ -120,7 +120,7 @@
 */
 #define CLIENT_MAP_ZOOM_MIN                 0.1
 #define CLIENT_MAP_ZOOM_MAX                 10.0
-#define CLIENT_MAP_ZOOM_STEP                10       //percent
+#define CLIENT_MAP_ZOOM_STEP                10      //percent
 
 typedef struct {
     char callsign[CALLSIGN_LENGTH + 1];
