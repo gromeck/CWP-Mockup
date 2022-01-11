@@ -65,7 +65,8 @@ static int _new_tracks = TRACKS_DEFAULT;
 static int _tracks = 0;
 static SERVER_TRACK _track[TRACKS_MAX];
 
-#define RANDOM_UPPER_CHAR		('A' + random() % ('Z' - 'A' + 1))
+#define RANDOM_UPPER_CHAR		((char) ('A' + random() % ('Z' - 'A' + 1)))
+
 /*
 **	generate a callsign
 */
