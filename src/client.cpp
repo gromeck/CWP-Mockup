@@ -652,7 +652,7 @@ public:
 
 				if (!_track[idx].coasting) {
 					// draw prediction line
-					if (_track[idx].track.prediction.getX() > 0 || _track[idx].track.prediction.getY() > 0 || _track[idx].track.prediction.getX()) {
+					if (_track[idx].track.prediction.getX() > 0 || _track[idx].track.prediction.getY() > 0) {
 						fl_color(CLIENT_PREDICTION_LINE_COLOR);
 						fl_line_style(FL_SOLID,CLIENT_PREDICTION_LINE_THICKNESS,NULL);
 						fl_line(pos_x,pos_y,
