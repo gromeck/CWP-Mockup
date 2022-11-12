@@ -205,7 +205,7 @@ class myHttpRequestHandler : public Poco::Net::HTTPRequestHandler
 public:
 	virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPServerResponse &resp)
 	{
-		Poco::Timestamp now;
+		unsigned long now = millis();
 
 		/*
 		**	create an XML document with all the tracks
@@ -238,7 +238,7 @@ public:
 			track->setAttribute("predictionX",std::to_string(_track[n].prediction.getX()));
 			track->setAttribute("predictionY",std::to_string(_track[n].prediction.getY()));
 			track->setAttribute("predictionZ",std::to_string(_track[n].prediction.getZ()));
-			track->setAttribute("timestamp",std::to_string(now.epochMicroseconds()));
+			track->setAttribute("timestamp",std::to_string(now));
 		}
 
 		/*
