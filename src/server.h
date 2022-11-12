@@ -45,7 +45,7 @@ typedef struct {
 	Coordinate heading;
 	Coordinate prediction;
 	int speed;
-	Poco::Timestamp last_update;
+	unsigned long last_update;
 } SERVER_TRACK;
 
 int runServer(int port);

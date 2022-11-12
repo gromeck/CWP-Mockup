@@ -32,7 +32,6 @@
 #include <unistd.h>
 #include <limits.h>
 #include <math.h>
-#include <Poco/Timestamp.h>
 #include <Poco/Net/DNS.h>
 #include <Poco/Net/HostEntry.h>
 #include <Poco/Net/SocketAddress.h>
@@ -64,7 +63,7 @@
 
 static bool _connected = false;
 static bool _receiving = false;
-static Poco::Timestamp _last_update;
+static unsigned long _last_update;
 
 /****************************************************************************
 
@@ -79,14 +78,10 @@ static bool updateTrack(int idx,CLIENT_TRACK_UPDATE *track)
 	if (idx < 0 || idx >= TRACKS_MAX)
 		return false;
 
-	Poco::Timestamp now;
+	unsigned long now = millis();
 
 	if (_track[idx].valid) {
-		Poco::Timestamp::TimeDiff delta_tv;
-
-		delta_tv = now - _track[idx].last_history_update;
-
-		if (delta_tv > CLIENT_TRACK_HISTORY_TIME * USEC_PER_MSEC) {
+		if (now - _track[idx].last_history_update > CLIENT_TRACK_HISTORY_TIME) {
 			/*
 			**	shift the history dots
 			*/
@@ -149,9 +144,9 @@ static CLIENT_TRACK *lookupTrack(double x,double y)
 static void *runClientTracking(void *arg)
 {
 	while (!_shutdown) {
-		Poco::Timestamp now;
+		unsigned long now = millis();
 
-		if (now - _last_update > CLIENT_TRACK_RECEIVING_TIMEOUT * USEC_PER_MSEC) {
+		if (now - _last_update > CLIENT_TRACK_RECEIVING_TIMEOUT) {
 			/*
 			**	it looks like we did not receiving data
 			*/
@@ -163,10 +158,10 @@ static void *runClientTracking(void *arg)
 				/*
 				**	check for coasting/invalid because of missing updates
 				*/
-				if (now - _track[idx].last_update > CLIENT_TRACK_COASTING_TIMEOUT * USEC_PER_MSEC) {
+				if (!_track[idx].coasting && now - _track[idx].last_update > CLIENT_TRACK_COASTING_TIMEOUT) {
 					_track[idx].coasting = true;
 				}
-				if (now - _track[idx].last_update > CLIENT_TRACK_INVALID_TIMEOUT * USEC_PER_MSEC) {
+				if (_track[idx].coasting && now - _track[idx].last_update > CLIENT_TRACK_INVALID_TIMEOUT) {
 					_track[idx].valid = false;
 				}
 
@@ -186,7 +181,7 @@ static void *runClientTracking(void *arg)
 				_track[idx].stca = stca;
 			}
 		}
-		usleep(CLIENT_TRACK_UPDATE_RATE * USEC_PER_MSEC);
+		msleep(CLIENT_TRACK_UPDATE_RATE);
 	}
 	return NULL;
 }
@@ -296,7 +291,7 @@ static void *runClientCommunication(void *arg)
 										std::stod(element->getAttribute("predictionY")),
 										std::stod(element->getAttribute("predictionZ")));
 								if (element->getAttribute("timestamp") != "")
-									track_update.timestamp = Poco::Timestamp(std::stoul(element->getAttribute("timestamp")));
+									track_update.timestamp = std::stoul(element->getAttribute("timestamp"));
 
 								/*
 								**	ok, finally update the track
@@ -325,7 +320,7 @@ static void *runClientCommunication(void *arg)
 		}
 
 		// wait before reconnect
-		usleep(CLIENT_COMMUNICATION_UPDATE_RATE * USEC_PER_MSEC);
+		msleep(CLIENT_COMMUNICATION_UPDATE_RATE);
 	}
 
 	LOG_NOTICE("shutting down thread runClientCommunication()");
@@ -384,7 +379,7 @@ static void openTrackInfoWindow(CLIENT_TRACK *track)
 class airspaceWidget: public Fl_Box
 {
 private:
-	Poco::Timestamp last_info;
+	unsigned long last_info;
 	int frames_between_info = 0;
 	double rendering_time = 0;
 	char info[1000];
@@ -594,7 +589,7 @@ public:
 	void draw(void)
 	{
 		//LOG_INFO("airspaceWidget::draw(): ...");
-		Poco::Timestamp start_rendering;
+		unsigned long start_rendering = millis();
 
 		// set clipping to the widget area
 		fl_push_clip(x(),y(),w(),h());
@@ -663,8 +658,7 @@ public:
 					// draw the label
 					char label[CLIENT_LABEL_LINES][50];
 					int linenr = 0;
-					Poco::Timestamp now;
-					unsigned long age = (now - _track[idx].track.timestamp) / USEC_PER_MSEC;
+					unsigned long age = start_rendering - _track[idx].track.timestamp;
 
 					fl_color(CLIENT_LABEL_LINE_COLOR);
 					fl_line_style(FL_SOLID,CLIENT_LABEL_LINE_THICKNESS,NULL);
@@ -705,11 +699,11 @@ public:
 		}
 
 		// compute some statistic information
-		Poco::Timestamp now;
+		unsigned long now = millis();
 
 		this->frames_between_info++;
-		this->rendering_time += (double) (now - start_rendering) / Poco::Timestamp::resolution();
-		double delta = (double) (now - this->last_info) / Poco::Timestamp::resolution();
+		this->rendering_time += (double) (now - start_rendering) / MSEC_PER_SEC;
+		double delta = (double) (now - this->last_info) / MSEC_PER_SEC;
 
 		if (delta >= (double) CLIENT_STATS_DISPLAY_RATE / MSEC_PER_SEC) {
 			/*

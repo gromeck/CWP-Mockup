@@ -26,6 +26,7 @@
 #include <Poco/Channel.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Logger.h>
+#include <Poco/Timestamp.h>
 
 #define __TITLE__		    "CWP-Mockup"
 #define __VERSION_NR__	    "0.1"
@@ -51,6 +52,16 @@
 #define FT2NM(ft)           ((ft) / NM2FT(1))
 #define FT2FL(ft)           ((ft) / 100)
 #define FL2FT(fl)           ((fl) * 100)
+
+/*
+**	sleep for milliseconds
+*/
+#define msleep(ms)			usleep((ms) * USEC_PER_MSEC)
+
+/*
+**	get the current time in ms
+*/
+#define millis()			(Poco::Timestamp().epochMicroseconds() / USEC_PER_MSEC)
 
 /*
 **  some defines to layout the track file

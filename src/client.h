@@ -127,7 +127,7 @@ typedef struct {
     Coordinate position;
     int speed;
     Coordinate prediction;
-    Poco::Timestamp timestamp;
+    unsigned long timestamp;
 } CLIENT_TRACK_UPDATE;
 
 typedef struct {
@@ -136,8 +136,8 @@ typedef struct {
     bool stca;
     int history_dots;
     Coordinate history[CLIENT_HISTORY_DOTS_MAX];
-    Poco::Timestamp last_history_update;
-    Poco::Timestamp last_update;
+    unsigned long last_history_update;
+    unsigned long last_update;
     CLIENT_TRACK_UPDATE track;
 } CLIENT_TRACK;
 

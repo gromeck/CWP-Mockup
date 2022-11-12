@@ -29,7 +29,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <math.h>
-#include <Poco/Timestamp.h>
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/HTTPServer.h>
@@ -106,7 +105,7 @@ static SERVER_TRACK *initilize_track(int idx)
 	/*
 	**	timestamp
 	*/
-	track.last_update = Poco::Timestamp();
+	track.last_update = millis();
 
 	return &track;
 }
@@ -118,7 +117,7 @@ static void *runServerTraffic(void *arg)
 {
 	while (!_shutdown) {
 		int n;
-		Poco::Timestamp now;
+		unsigned long now = millis();
 
 		/*
 		**	check the number of requested tracks
@@ -146,9 +145,9 @@ static void *runServerTraffic(void *arg)
 		**	move all tracks
 		*/
 		for (n = 0;n < _tracks;n++) {
-			Poco::Timestamp::TimeDiff delta = now - _track[n].last_update;
+			unsigned long delta = now - _track[n].last_update;
 
-			if (delta > SERVER_TRACK_UPDATE_RATE * USEC_PER_MSEC) {
+			if (delta > SERVER_TRACK_UPDATE_RATE) {
 				/*
 				**	this track has to be moved
 				*/
@@ -170,7 +169,7 @@ static void *runServerTraffic(void *arg)
 				distance = _track[n].position.getDistance(_track[n].heading);
 
 				// compute the new position
-				scale = (double) KNOTS2NMS(_track[n].speed) * delta / USEC_PER_SEC / distance;
+				scale = (double) KNOTS2NMS(_track[n].speed) * delta / MSEC_PER_SEC / distance;
 				_track[n].position = _track[n].position + (_track[n].heading - _track[n].position) * scale;
 
 				// compute the prediction
@@ -185,7 +184,7 @@ static void *runServerTraffic(void *arg)
 		/*
 		**	wait some time
 		*/
-		usleep(SERVER_TRACK_UPDATE_RATE * USEC_PER_MSEC);
+		msleep(SERVER_TRACK_UPDATE_RATE);
 	}
 
 	LOG_NOTICE("shutting down thread runServerTraffic()");
