@@ -89,10 +89,10 @@
 extern Poco::ConsoleChannel *_channel;
 extern Poco::Logger &_logger;
 
-#define LOG_ERROR(args...)          poco_error(_logger,(std::string) (__FILE__ ": ") + Poco::format(args,NULL))
-#define LOG_WARNING(args...)        poco_warning(_logger,(std::string) (__FILE__ ": ") + Poco::format(args,NULL))
-#define LOG_NOTICE(args...)         poco_notice(_logger,(std::string) (__FILE__ ": ") + Poco::format(args,NULL))
-#define LOG_INFO(args...)           poco_information(_logger,(std::string) (__FILE__ ": ") + Poco::format(args,NULL))
+#define LOG_ERROR(args...)          poco_error(_logger,Poco::format(__FILE__ ":%d: ",__LINE__) + Poco::format(args,NULL))
+#define LOG_WARNING(args...)        poco_warning(_logger,Poco::format(__FILE__ ":%d: ",__LINE__) + Poco::format(args,NULL))
+#define LOG_NOTICE(args...)         poco_notice(_logger,Poco::format(__FILE__ ":%d: ",__LINE__) + Poco::format(args,NULL))
+#define LOG_INFO(args...)           poco_information(_logger,Poco::format(__FILE__ ":%d: ",__LINE__) + Poco::format(args,NULL))
 
 extern bool _shutdown;
 extern bool _debug;
