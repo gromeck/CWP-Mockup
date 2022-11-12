@@ -77,7 +77,7 @@ static void usage(const char *argv0)
 					"          this option is not passed, " __TITLE__ " will run in server mode\n");
 	fprintf(stderr," -p <port>\n --port <port>\n"
 					"          use <port> for the communication between server and client; default is %d\n",DEFAULT_PORT);
-	fprintf(stderr," -d\n --debug\n"
+	fprintf(stderr," -v\n --verbose\n"
 					"          enable debug mode and print some information\n");
 	fprintf(stderr," -f\n --fullscreen\n"
 					"          when " __TITLE__ " runs in client mode, open the main window fullscreen\n");
@@ -132,25 +132,24 @@ int main(int argc,char *argv[])
 						goto usage;
 						break;
 			case 's':	/*
-						**	run in client mode
+						**	specify the server name (only client mode)
 						*/
 						server = strdup(optarg);
 						break;
 			case 'p':	/*
-						**	run in testmode
+						**	specify the port to use
 						*/
 						port = atoi(optarg);
 						break;
 			case 'f':	/*
-						**	run the client in fullscreen mode
+						**	fullscreen mode (only client mode)
 						*/
 						fullscreen = true;
 						break;
 			case 'v':	/*
 						**	be verbose
 						*/
-						logLevel++;
-						_logger.setLevel(logLevel);
+						_logger.setLevel(++logLevel);
 						LOG_INFO("logLevel=%d",logLevel);
 						break;
 			default:	/*
