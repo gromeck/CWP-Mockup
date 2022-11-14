@@ -29,6 +29,9 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <math.h>
+#include "Poco/File.h"
+#include "Poco/Path.h"
+#include "Poco/URI.h"
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/HTTPServer.h>
@@ -38,11 +41,8 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Util/ServerApplication.h>
-#include <Poco/DOM/Document.h>
-#include <Poco/DOM/Element.h>
-#include <Poco/DOM/Node.h>
-#include <Poco/DOM/DOMWriter.h>
-#include <Poco/XML/XMLWriter.h>
+#include <Poco/JSON/Object.h>
+#include <Poco/JSON/PrintHandler.h>
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Input.H>
@@ -65,6 +65,7 @@ static int _tracks = 0;
 static SERVER_TRACK _track[TRACKS_MAX];
 
 #define RANDOM_UPPER_CHAR		((char) ('A' + random() % ('Z' - 'A' + 1)))
+#define HTDOC_DIR				"/usr/share/" __TITLE__ "/htdocs/"
 
 /*
 **	generate a callsign
@@ -200,65 +201,101 @@ static void *runServerTraffic(void *arg)
 
 static int _port = 0;
 
-class myHttpRequestHandler : public Poco::Net::HTTPRequestHandler
+class httpRequestHandlerFiles : public Poco::Net::HTTPRequestHandler
 {
+private:
+	std::string _file;
 public:
+	/*
+	**	serve local static files
+	*/
+	httpRequestHandlerFiles(const std::string& file): _file(file) { }
+	virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPServerResponse &resp)
+	{
+		LOG_NOTICE("HTTP: sending reply");
+
+		resp.setChunkedTransferEncoding(true);
+
+		Poco::Path path(_file);
+		if (Poco::File(path).exists()) {
+			std::string mime = "application/binary";
+			std::string ext = path.getExtension();
+			if (ext == "html" || ext == "htm" || ext == "js" || ext == "css")
+				mime = "text/" + ext;
+
+			resp.sendFile(_file, mime);
+		}
+		else {
+			resp.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_NOT_FOUND);
+			resp.send();
+		}
+	}
+};
+
+class httpRequestHandlerTracks : public Poco::Net::HTTPRequestHandler
+{
+	/*
+	**	serve the track file as JSON
+	*/
 	virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPServerResponse &resp)
 	{
 		unsigned long now = millis();
 
 		/*
-		**	create an XML document with all the tracks
+		**	create an JSON document with all the tracks
 		*/
-		LOG_NOTICE("DOM: creating XML document");
-		Poco::XML::Document* doc = new Poco::XML::Document();
+		LOG_NOTICE("HTTP: creating JSON document");
+		Poco::JSON::Object::Ptr json = new Poco::JSON::Object();
 
 		/*
 		**	add the numer of tracks
 		*/
-		LOG_NOTICE("DOM: adding tracks element");
-		Poco::XML::Element* tracks = doc->createElement("tracks");
-		tracks->setAttribute("number",std::to_string(_tracks));
-		doc->appendChild(tracks)->release();
+		LOG_NOTICE("HTTP:JSON: adding tracks element");
+		json->set("tracks", _tracks);
 
 		/*
 		**	add all tracks
 		*/
+		Poco::JSON::Array::Ptr trackArray = new Poco::JSON::Array();
 		for (int n = 0;n < _tracks;n++) {
-			LOG_NOTICE("DOM: adding track element");
-			Poco::XML::Element* track = doc->createElement("track");
-			tracks->appendChild(track)->release();
+			LOG_NOTICE("HTTP:JSON: adding track element");
+			Poco::JSON::Object::Ptr track = new Poco::JSON::Object();
 
-			track->setAttribute("index",std::to_string(n));
-			track->setAttribute("callsign",_track[n].callsign);
-			track->setAttribute("positionX",std::to_string(_track[n].position.getX()));
-			track->setAttribute("positionY",std::to_string(_track[n].position.getY()));
-			track->setAttribute("positionZ",std::to_string(_track[n].position.getZ()));
-			track->setAttribute("speed",std::to_string(_track[n].speed));
-			track->setAttribute("predictionX",std::to_string(_track[n].prediction.getX()));
-			track->setAttribute("predictionY",std::to_string(_track[n].prediction.getY()));
-			track->setAttribute("predictionZ",std::to_string(_track[n].prediction.getZ()));
-			track->setAttribute("timestamp",std::to_string(now));
+			track->set("index",n);
+			track->set("callsign",std::string(_track[n].callsign));
+
+			Poco::JSON::Object::Ptr position = new Poco::JSON::Object();
+			position->set("x",_track[n].position.getX());
+			position->set("y",_track[n].position.getY());
+			position->set("z",_track[n].position.getZ());
+			track->set("position",position);
+
+			track->set("speed",_track[n].speed);
+			Poco::JSON::Object::Ptr prediction = new Poco::JSON::Object();
+			prediction->set("x",_track[n].prediction.getX());
+			prediction->set("y",_track[n].prediction.getY());
+			prediction->set("z",_track[n].prediction.getZ());
+			track->set("prediction",prediction);
+
+			track->set("timestamp",now);
+			trackArray->add(track);
 		}
+		json->set("track", trackArray);
 
 		/*
 		**	sending response
 		*/
-		LOG_NOTICE("HTTP: sending reply");
+		LOG_NOTICE("HTTP:JSON: initializing reply");
 		resp.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
-		resp.setContentType("text/xml");
+		resp.setContentType("text/json");
 		//resp.setContentLength(payload.size());
 		std::ostream &out = resp.send();
 
 		/*
-		**	write the XML to the socket
+		**	write the JSON to the socket
 		*/
-		LOG_NOTICE("HTTP: sending XML document");
-
-		Poco::XML::DOMWriter writer;
-		writer.setNewLine("\n");
-		writer.setOptions(Poco::XML::XMLWriter::PRETTY_PRINT);
-		writer.writeNode(out,doc);
+		LOG_NOTICE("HTTP: sending JSON document");
+		json->stringify(out,1);
 
 		LOG_NOTICE("HTTP: flushing output");
 
@@ -266,17 +303,73 @@ public:
 	}
 };
 
+class httpRequestHandlerNotFound: public Poco::Net::HTTPRequestHandler
+{
+public:
+	virtual void handleRequest(Poco::Net::HTTPServerRequest &req, Poco::Net::HTTPServerResponse &resp)
+	{
+		resp.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_NOT_FOUND);
+		LOG_NOTICE("HTTP: sending response");
+		resp.send();
+	}
+};
+
 /*
 **	handle the requests
 */
-class myHttpRequestHandlerFactory: public Poco::Net::HTTPRequestHandlerFactory
+class httpRequestHandlerFactory: public Poco::Net::HTTPRequestHandlerFactory
 {
+private:
+	std::string _docroot;
+	bool fileExists(const Poco::Net::HTTPServerRequest& req,std::string& fullPath)
+	{
+		LOG_INFO("HTTP: Requested URI: %s",req.getURI());
+		Poco::URI uri(req.getURI());
+		std::string path = uri.getPath();
+		Poco::Path requestPath(path, Poco::Path::PATH_UNIX);
+		Poco::Path localPath(_docroot);
+		localPath.makeDirectory();
+		for (int i = 0; i < requestPath.depth(); i++)
+			localPath.pushDirectory(requestPath[i]);
+
+		localPath.setFileName(requestPath.getFileName());
+		LOG_INFO("HTTP: Requested file: %s",requestPath.toString());
+		Poco::File localFile(localPath.toString());
+
+		if (localFile.exists() && localFile.isDirectory()) {
+			LOG_INFO("HTTP: Requested local file is a directory: %s",localPath.toString());
+			localPath.setFileName("index.html");
+			localFile = localPath.toString();
+		}
+
+		if (localFile.exists()) {
+			fullPath = localPath.toString();
+			return true;
+		}
+		LOG_WARNING("HTTP: Requested local file doesn't exist: %s",localPath.toString());
+		return false;
+	}
+
 public:
+	httpRequestHandlerFactory(const char *docroot) : Poco::Net::HTTPRequestHandlerFactory()
+	{
+		_docroot = std::string(docroot);
+		LOG_NOTICE("HTTP: initializing with docroot %s",_docroot);
+	}
+
 	virtual Poco::Net::HTTPRequestHandler* createRequestHandler(const Poco::Net::HTTPServerRequest &request)
 	{
-		// currently we will reply always with the tracklist
-		LOG_NOTICE("serving request to %s",request.getURI());
-    	return new myHttpRequestHandler;
+		LOG_NOTICE("HTTP: serving request to %s",request.getURI());
+
+		std::string localPath;
+		std::string uriPath = Poco::URI(request.getURI()).getPath();
+
+		if (request.getURI() == "/tracks.json")
+			return new httpRequestHandlerTracks();
+		else if (fileExists(request,localPath))
+			return new httpRequestHandlerFiles(localPath);
+		else
+			return new httpRequestHandlerNotFound();
   	}
 };
 
@@ -285,12 +378,14 @@ public:
 */
 static void *runServerCommunication(void *arg)
 {
+	LOG_NOTICE("starting up server communication");
 	try {
 		Poco::Net::HTTPServerParams* params = new Poco::Net::HTTPServerParams;
 		params->setMaxQueued(100);
 		params->setMaxThreads(16);
 		Poco::Net::ServerSocket socket(_port);
-		Poco::Net::HTTPServer srv(new myHttpRequestHandlerFactory(), socket, params);
+		Poco::Net::HTTPServer srv(new httpRequestHandlerFactory((const char *) arg), socket, params);
+		LOG_NOTICE("starting HTTP server");
 		srv.start();
 		while (!_shutdown)
 			sleep(1);
@@ -300,7 +395,7 @@ static void *runServerCommunication(void *arg)
 		LOG_ERROR("network exception: %s",exc.displayText());
 	}
 
-	LOG_NOTICE("shutting down thread runServerCommunication()");
+	LOG_NOTICE("shutting down server communication");
 	return NULL;
 }
 
@@ -368,17 +463,18 @@ static int runServerFrontend(void)
 	return Fl::run();
 }
 
-int runServer(int port)
+int runServer(int port,const char *docroot)
 {
 	pthread_t communicationPID;
 	pthread_t trafficPID;
 
 	_port = port;
+	LOG_NOTICE("runServer: port=%d  docroot=%s",port,std::string(docroot));
 
 	/*
 	**	start a thread with the socket communication
 	*/
-	pthread_create(&communicationPID,NULL,runServerCommunication,NULL);
+	pthread_create(&communicationPID,NULL,runServerCommunication,(void *) docroot);
 
 	/*
 	**	start a thread with the air traffic simulation

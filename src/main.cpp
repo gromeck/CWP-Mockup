@@ -77,6 +77,8 @@ static void usage(const char *argv0)
 					"          this option is not passed, " __TITLE__ " will run in server mode\n");
 	fprintf(stderr," -p <port>\n --port <port>\n"
 					"          use <port> for the communication between server and client; default is %d\n",DEFAULT_PORT);
+	fprintf(stderr," -d <dir>\n --docroot <dir>\n"
+					"          set the document root to serve static files from\n");
 	fprintf(stderr," -v\n --verbose\n"
 					"          enable debug mode and print some information\n");
 	fprintf(stderr," -f\n --fullscreen\n"
@@ -88,6 +90,7 @@ int main(int argc,char *argv[])
 {
 	int c,n,m;
 	char *server = NULL;
+	char *docroot = NULL;
 	int port = DEFAULT_PORT;
 	int fullscreen = false;
 	int logLevel = Poco::Message::PRIO_WARNING;
@@ -99,6 +102,7 @@ int main(int argc,char *argv[])
 		{ "version",	0,	0,	'V' },
 		{ "help",		0,	0,	'h' },
 		{ "server",		1,	0,	's' },
+		{ "docroot",	1,	0,	'd' },
 		{ "port",		1,	0,	'p' },
 		{ "fullscreen",	0,	0,	'f' },
 		{ "verbose",	0,	0,	'v' },
@@ -141,6 +145,11 @@ int main(int argc,char *argv[])
 						*/
 						port = atoi(optarg);
 						break;
+			case 'd':	/*
+						**	specify the document root
+						*/
+						docroot = strdup(optarg);
+						break;
 			case 'f':	/*
 						**	fullscreen mode (only client mode)
 						*/
@@ -180,13 +189,27 @@ int main(int argc,char *argv[])
 	signal(SIGPIPE,SIG_IGN);
 	signal(SIGVTALRM,SIG_IGN);
 
-	LOG_NOTICE("running in %s mode with port %d",
-		(std::string) ((server) ? "client" : "server"),port);
-
-	if (server)
+	if (server) {
+		/*
+		**	run in client mode
+		*/
+		LOG_NOTICE("running in client mode with port=%d",port);
 		runClient(server,port,fullscreen);
-	else
-		runServer(port);
+	}
+	else {
+		/*
+		**	if no docroot is given, used the default
+		*/
+		if (!docroot) {
+			LOG_NOTICE("no docroot set");
+		}
+
+		/*
+		**	run in server mode
+		*/
+		LOG_NOTICE("running in server mode with port=%d, docroot=%s",port,std::string(docroot));
+		runServer(port,docroot);
+	}
 
 	/*
 	**	enforce other threads to terminate

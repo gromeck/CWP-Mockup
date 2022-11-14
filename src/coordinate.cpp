@@ -63,9 +63,9 @@ void Coordinate::setZ(double z)
 
 void Coordinate::setRandom(void)
 {
-	this->x = (double) rand() / RAND_MAX * MAP_WIDTH;
-	this->y = (double) rand() / RAND_MAX * MAP_HEIGHT;
-	this->z = (double) rand() / RAND_MAX * MAP_DEPTH;
+	this->x = (double) rand() * (double) MAP_WIDTH  / RAND_MAX;
+	this->y = (double) rand() * (double) MAP_HEIGHT / RAND_MAX;
+	this->z = (double) rand() * (double) MAP_DEPTH  / RAND_MAX;
 }
 
 void Coordinate::print(const char *title)

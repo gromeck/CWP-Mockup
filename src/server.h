@@ -48,6 +48,6 @@ typedef struct {
 	unsigned long last_update;
 } SERVER_TRACK;
 
-int runServer(int port);
+int runServer(int port,const char *docroot);
 
 #endif
