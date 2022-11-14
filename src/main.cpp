@@ -90,7 +90,7 @@ int main(int argc,char *argv[])
 {
 	int c,n,m;
 	char *server = NULL;
-	char *docroot = NULL;
+	const char *docroot = HTDOC_ROOT;
 	int port = DEFAULT_PORT;
 	int fullscreen = false;
 	int logLevel = Poco::Message::PRIO_WARNING;

@@ -65,7 +65,6 @@ static int _tracks = 0;
 static SERVER_TRACK _track[TRACKS_MAX];
 
 #define RANDOM_UPPER_CHAR		((char) ('A' + random() % ('Z' - 'A' + 1)))
-#define HTDOC_DIR				"/usr/share/" __TITLE__ "/htdocs/"
 
 /*
 **	generate a callsign

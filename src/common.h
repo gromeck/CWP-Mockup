@@ -32,7 +32,15 @@
 #define __VERSION_NR__	    "0.1"
 
 
+/*
+**	default server port
+*/
 #define DEFAULT_PORT    	2566
+
+/*
+**	default document root
+*/
+#define HTDOC_ROOT			"/usr/share/" __TITLE__ "/htdocs/"
 
 /*
 **  some very common stuff
