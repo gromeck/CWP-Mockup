@@ -440,18 +440,26 @@ static void handleShutdown(void *)
 */
 static int runServerFrontend(void)
 {
-	window = new Fl_Double_Window(300,120,"Server " __TITLE__);
+	const int padding = 10;
+	const int width = 240,height = 120;
+	int x = padding,y = padding;
+	int h;
 
-	numTracksLabel = new Fl_Box(10,10,280,30,"Number of Tracks:");
+	window = new Fl_Double_Window(width,height,"Server " __TITLE__);
+
+	numTracksLabel = new Fl_Box(x,y,width - 2 * padding,h = 20,"Number of Tracks:");
 	numTracksLabel->align(FL_ALIGN_INSIDE|FL_ALIGN_LEFT|FL_ALIGN_TOP);
+	y += h + padding;
 
-	numTracksInput = new Fl_Int_Input(10,40,280,30,"");
+	numTracksInput = new Fl_Int_Input(x,y,width - 2 * padding,h = 30,"");
 	numTracksInput->color((Fl_Color) 55);
 	numTracksInput->maximum_size(5);
 	updateNumTracksInput(_new_tracks);
+	y += h + padding;
 
-	setButton = new Fl_Return_Button(10,80,280,30,"Set");
+	setButton = new Fl_Return_Button(x,y,width - 2 * padding,h = 30,"Set");
 	setButton->callback(clickedSetButton);
+	y += h + padding;
 
 	// handle shutdown
 	handleShutdown(NULL);
