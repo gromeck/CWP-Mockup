@@ -24,3 +24,7 @@
 bin_PROGRAMS=CWPMockUp
 
 CWPMockUp_SOURCES=main.cpp server.cpp client.cpp coordinate.cpp
+
+install-exec-hook:
+	$(mkinstalldirs) /usr/share/CWP-Mockup/htdocs/
+	cp -pr $(srcdir)/web/htdocs /usr/share/CWP-Mockup/
