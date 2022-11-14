@@ -38,11 +38,8 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Util/ServerApplication.h>
-#include <Poco/DOM/Document.h>
-#include <Poco/DOM/Element.h>
-#include <Poco/DOM/Node.h>
-#include <Poco/DOM/DOMWriter.h>
-#include <Poco/XML/XMLWriter.h>
+#include <Poco/JSON/Object.h>
+#include <Poco/JSON/PrintHandler.h>
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Input.H>
@@ -65,6 +62,7 @@ static int _tracks = 0;
 static SERVER_TRACK _track[TRACKS_MAX];
 
 #define RANDOM_UPPER_CHAR		((char) ('A' + random() % ('Z' - 'A' + 1)))
+#define HTDOC_DIR				"/usr/share/" __TITLE__ "/htdocs/"
 
 /*
 **	generate a callsign
@@ -208,57 +206,60 @@ public:
 		unsigned long now = millis();
 
 		/*
-		**	create an XML document with all the tracks
+		**	create an JSON document with all the tracks
 		*/
-		LOG_NOTICE("DOM: creating XML document");
-		Poco::XML::Document* doc = new Poco::XML::Document();
+		LOG_NOTICE("HTTP: creating JSON document");
+		Poco::JSON::Object::Ptr json = new Poco::JSON::Object();
 
 		/*
 		**	add the numer of tracks
 		*/
-		LOG_NOTICE("DOM: adding tracks element");
-		Poco::XML::Element* tracks = doc->createElement("tracks");
-		tracks->setAttribute("number",std::to_string(_tracks));
-		doc->appendChild(tracks)->release();
+		LOG_NOTICE("HTTP:JSON: adding tracks element");
+		json->set("tracks", _tracks);
 
 		/*
 		**	add all tracks
 		*/
+		Poco::JSON::Array::Ptr trackArray = new Poco::JSON::Array();
 		for (int n = 0;n < _tracks;n++) {
-			LOG_NOTICE("DOM: adding track element");
-			Poco::XML::Element* track = doc->createElement("track");
-			tracks->appendChild(track)->release();
+			LOG_NOTICE("HTTP:JSON: adding track element");
+			Poco::JSON::Object::Ptr track = new Poco::JSON::Object();
 
-			track->setAttribute("index",std::to_string(n));
-			track->setAttribute("callsign",_track[n].callsign);
-			track->setAttribute("positionX",std::to_string(_track[n].position.getX()));
-			track->setAttribute("positionY",std::to_string(_track[n].position.getY()));
-			track->setAttribute("positionZ",std::to_string(_track[n].position.getZ()));
-			track->setAttribute("speed",std::to_string(_track[n].speed));
-			track->setAttribute("predictionX",std::to_string(_track[n].prediction.getX()));
-			track->setAttribute("predictionY",std::to_string(_track[n].prediction.getY()));
-			track->setAttribute("predictionZ",std::to_string(_track[n].prediction.getZ()));
-			track->setAttribute("timestamp",std::to_string(now));
+			track->set("index",n);
+			track->set("callsign",std::string(_track[n].callsign));
+
+			Poco::JSON::Object::Ptr position = new Poco::JSON::Object();
+			position->set("x",_track[n].position.getX());
+			position->set("y",_track[n].position.getY());
+			position->set("z",_track[n].position.getZ());
+			track->set("position",position);
+
+			track->set("speed",_track[n].speed);
+			Poco::JSON::Object::Ptr prediction = new Poco::JSON::Object();
+			prediction->set("x",_track[n].prediction.getX());
+			prediction->set("y",_track[n].prediction.getY());
+			prediction->set("z",_track[n].prediction.getZ());
+			track->set("prediction",prediction);
+
+			track->set("timestamp",now);
+			trackArray->add(track);
 		}
+		json->set("track", trackArray);
 
 		/*
 		**	sending response
 		*/
-		LOG_NOTICE("HTTP: sending reply");
+		LOG_NOTICE("HTTP:JSON: initializing reply");
 		resp.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
-		resp.setContentType("text/xml");
+		resp.setContentType("text/json");
 		//resp.setContentLength(payload.size());
 		std::ostream &out = resp.send();
 
 		/*
-		**	write the XML to the socket
+		**	write the JSON to the socket
 		*/
-		LOG_NOTICE("HTTP: sending XML document");
-
-		Poco::XML::DOMWriter writer;
-		writer.setNewLine("\n");
-		writer.setOptions(Poco::XML::XMLWriter::PRETTY_PRINT);
-		writer.writeNode(out,doc);
+		LOG_NOTICE("HTTP: sending JSON document");
+		json->stringify(out,1);
 
 		LOG_NOTICE("HTTP: flushing output");
 
@@ -300,7 +301,7 @@ static void *runServerCommunication(void *arg)
 		LOG_ERROR("network exception: %s",exc.displayText());
 	}
 
-	LOG_NOTICE("shutting down thread runServerCommunication()");
+	LOG_NOTICE("shutting down server communication");
 	return NULL;
 }
 
@@ -368,17 +369,18 @@ static int runServerFrontend(void)
 	return Fl::run();
 }
 
-int runServer(int port)
+int runServer(int port,const char *docroot)
 {
 	pthread_t communicationPID;
 	pthread_t trafficPID;
 
 	_port = port;
+	LOG_NOTICE("runServer: port=%d  docroot=%s",port,std::string(docroot));
 
 	/*
 	**	start a thread with the socket communication
 	*/
-	pthread_create(&communicationPID,NULL,runServerCommunication,NULL);
+	pthread_create(&communicationPID,NULL,runServerCommunication,(void *) docroot);
 
 	/*
 	**	start a thread with the air traffic simulation

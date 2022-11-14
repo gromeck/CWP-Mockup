@@ -41,13 +41,9 @@
 #include <Poco/Net/HTTPRequest.h>
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/URI.h>
-#include <Poco/DOM/DOMParser.h>
-#include <Poco/DOM/Document.h>
-#include <Poco/DOM/Element.h>
-#include <Poco/DOM/Node.h>
-#include <Poco/DOM/NodeIterator.h>
-#include <Poco/DOM/NodeFilter.h>
-#include <Poco/SAX/InputSource.h>
+#include <Poco/JSON/JSON.h>
+#include <Poco/JSON/Parser.h>
+#include <Poco/JSON/Object.h>
 #include <FL/Fl.H>
 #include <FL/names.h>
 #include <FL/Fl_Double_Window.H>
@@ -200,6 +196,8 @@ static const char *_server = NULL;
 */
 static void *runClientCommunication(void *arg)
 {
+	LOG_NOTICE("runClientCommunication: server=%s",std::string(_server));
+
 	while (!_shutdown) {
 		try {
 			/*
@@ -210,7 +208,7 @@ static void *runClientCommunication(void *arg)
 			Poco::Net::HostEntry::AddressList const &addresses = host.addresses();
 			Poco::Net::HostEntry::AddressList::const_iterator address_it;
 			for (address_it = addresses.begin();address_it != addresses.end();address_it++) {
-				LOG_NOTICE("Address: %s  isIPv4Compatible: %b",address_it->toString(),address_it->isIPv4Mapped());
+				LOG_NOTICE("Address: %s  isIPv4Compatible: %b",std::string(address_it->toString()),address_it->isIPv4Mapped());
 				if (address_it->isIPv4Mapped()) {
 					ipaddr = address_it->toString();
 					break;
@@ -222,12 +220,13 @@ static void *runClientCommunication(void *arg)
 			**
 			**	Note: we will use the ipaddr to connect the service to ensure that we use IPv4
 			*/
+			LOG_NOTICE("runClientCommunication: setting up URI");
 			Poco::URI uri;
 			uri.setScheme((std::string) "http");
 			uri.setHost(ipaddr);
 			uri.setPort(_port);
-			uri.setPath("/tracks/");
-			LOG_NOTICE("URI: %s",uri.toString());
+			uri.setPath("/tracks.json");
+			LOG_INFO("URI: %s",uri.toString());
 
 			/*
 			**	setup the client session and the request
@@ -249,62 +248,64 @@ static void *runClientCommunication(void *arg)
 			LOG_NOTICE("received response: %d %s",(int) response.getStatus(),response.getReason());
 			if (response.getStatus() == Poco::Net::HTTPResponse::HTTP_OK) {
 				/*
-				**	parses the XML answer
+				**	parses the JSON answer
 				*/
 				_connected = true;
-				Poco::XML::DOMParser parser;
-				parser.setFeature(Poco::XML::DOMParser::FEATURE_FILTER_WHITESPACE, true);
-				parser.setFeature(Poco::XML::XMLReader::FEATURE_NAMESPACES, false);
-				Poco::XML::InputSource source(in);
-				Poco::AutoPtr<Poco::XML::Document> document = parser.parse(&source);
+				Poco::JSON::Parser parser;
+				Poco::Dynamic::Var result = parser.parse(in);
+				Poco::JSON::Object::Ptr jsonObject = result.extract<Poco::JSON::Object::Ptr>();
+
+				Poco::Dynamic::Var tracks = jsonObject->get("track");
+				Poco::JSON::Array::Ptr collection = tracks.extract<Poco::JSON::Array::Ptr>();
 
 				/*
-				**	process the XML document
+				**	process the JSON document
 				*/
-				Poco::XML::NodeIterator it(document, Poco::XML::NodeFilter::SHOW_ELEMENT);
+				for (Poco::JSON::Array::ConstIterator track = collection->begin(); track != collection->end(); ++track ) {
+					Poco::JSON::Object::Ptr element = track->extract<Poco::JSON::Object::Ptr>();
 
-				for (Poco::XML::Node *node = it.nextNode();node;node = it.nextNode()) {
-					if (node->nodeName() == "tracks") {
-						for (Poco::XML::Node *track = node->firstChild();track;track = track->nextSibling()) {
-							Poco::XML::Element *element =
-								static_cast<Poco::XML::Element *>(track);
+					LOG_NOTICE("index=%s  callsign=%s",
+						element->get("index"),
+						element->get("callsign"));
 
-							LOG_NOTICE("index=%s  callsign=%s",
-								element->getAttribute("index"),
-								element->getAttribute("callsign"));
+					try {
+						/*
+						**	setup the track update
+						*/
+						CLIENT_TRACK_UPDATE track_update;
+						memset(&track_update,0,sizeof(track_update));
 
-							try {
-								/*
-								**	setup the track update
-								*/
-								CLIENT_TRACK_UPDATE track_update;
-								memset(&track_update,0,sizeof(track_update));
+						strcpy(track_update.callsign,element->getValue<std::string>("callsign").c_str());
 
-								strcpy(track_update.callsign,element->getAttribute("callsign").c_str());
-								track_update.position.set(
-										std::stod(element->getAttribute("positionX")),
-										std::stod(element->getAttribute("positionY")),
-										std::stod(element->getAttribute("positionZ")));
-								track_update.speed = std::stod(element->getAttribute("speed"));
-								track_update.prediction.set(
-										std::stod(element->getAttribute("predictionX")),
-										std::stod(element->getAttribute("predictionY")),
-										std::stod(element->getAttribute("predictionZ")));
-								if (element->getAttribute("timestamp") != "")
-									track_update.timestamp = std::stoul(element->getAttribute("timestamp"));
+						Poco::Dynamic::Var position = element->get("position");
+						Poco::JSON::Object::Ptr positionObj = position.extract<Poco::JSON::Object::Ptr>();
 
-								/*
-								**	ok, finally update the track
-								*/
-								updateTrack(std::stoi(element->getAttribute("index")),&track_update);
-							}
-							catch (std::invalid_argument e) {
-								/*
-								**	something went wrong
-								*/
-								LOG_ERROR("conversion problem:");
-							}
-						}
+						track_update.position.set(
+								positionObj->getValue<long>("x"),
+								positionObj->getValue<long>("y"),
+								positionObj->getValue<long>("z"));
+						track_update.speed = element->getValue<unsigned long>("speed");
+
+						Poco::Dynamic::Var prediction = element->get("prediction");
+						Poco::JSON::Object::Ptr predictionObj = prediction.extract<Poco::JSON::Object::Ptr>();
+
+						track_update.prediction.set(
+								predictionObj->getValue<long>("x"),
+								predictionObj->getValue<long>("y"),
+								predictionObj->getValue<long>("z"));
+						if (element->get("timestamp") != "")
+							track_update.timestamp = element->getValue<unsigned long>("timestamp");
+
+						/*
+						**	ok, finally update the track
+						*/
+						updateTrack(element->getValue<unsigned long>("index"),&track_update);
+					}
+					catch (std::invalid_argument e) {
+						/*
+						**	something went wrong
+						*/
+						LOG_ERROR("conversion problem:");
 					}
 				}
 			}
@@ -981,6 +982,9 @@ int runClient(const char *server,int port,bool fullscreen)
 {
 	pthread_t communicationPID;
 	pthread_t trackingPID;
+
+	LOG_INFO("runClient: server=%s  port=%d  fullscreen=%b",(server) ? std::string(server) : "<none>",port,fullscreen);
+
 	_port = port;
 	_server = (server) ? strdup(server) : "localhost";
 	memset(_track,0,sizeof(_track));

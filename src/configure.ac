@@ -27,7 +27,7 @@ if test "$STATIC_ENABLED" = yes; then
 	CFLAGS="$CFLAGS --static"
 	LDFLAGS="$LDFLAGS --static"
 fi
-POCOLIBS="-lPocoUtil -lPocoFoundation -lPocoNet -lPocoXML"
+POCOLIBS="-lPocoUtil -lPocoFoundation -lPocoNet -lPocoJSON"
 CFLAGS="$CFLAGS -g -ggdb -fno-strict-aliasing -fPIC -Wall"
 CFLAGS="$CFLAGS -D_GNU_SOURCE"
 CFLAGS="$CFLAGS "
