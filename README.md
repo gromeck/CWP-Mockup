@@ -2,13 +2,14 @@
 
 A mockup for an ATC controller working position (CWP). It can be used as a test dummy for different display or hardware setups.
 
-It has no hardware dependency -- it's just uses FLTK and is more or less plain X11 -- no openGL/GLX. So it is even possible to forward the client with setting X11 display environment variable. And it still reaches real good performance. See the section below about performance.
+It has no hardware dependency, no openGL/GLX. It can be used to test different paths between the server and the client and to measure the impact of bandwidth and latency.
+Both, the X11 implementation and the web implementation have simple and effective implemented to reach good performance which is comparable.
 
 <div style="float:left;">
 <img src="Ressources/Screenshots/CWP-Mockup-Screenshot-Display-1.png" height="500px">
 </div>
 
-This Mockup implements a server/client setup for a CWP in one single binary.
+This Mockup implements a server/client setup for a CWP in one single binary. In addition a standard and modern web browser can be used to display the web version.
 
 This binary is then started as a server and a client. Both, server and client, have simple frontends.
 
@@ -47,13 +48,20 @@ Options:
           show this help
  -s <name or IP address>
  --server <name or IP address>
-          if this option is set, the CWP-Mockup will run in client mode and will connect the referenced server;
-          this option is not passed, CWP-Mockup will run in server mode
+          if this option is set, the CWP-Mockup will run in client mode and
+          will connect the referenced server;
+          if this option is not passed, CWP-Mockup will run in server mode
  -p <port>
  --port <port>
-          use <port> for the communication between server and client; default is 2566
- -d
- --debug
+          use <port> for the communication between server and client;
+          default is 2566
+ -d <dir>
+ --docroot <dir>
+          set the document root to serve static files via HTTP to deliver the web
+          version of CWP-Mockup;
+          default is /usr/share/CWP-Mockup/htdocs/
+ -v
+ --verbose
           enable debug mode and print some information
  -f
  --fullscreen
@@ -70,7 +78,7 @@ Start the server without the command line argument `-s`. It will come up with it
 $ ./CWPMockUp
 ```
 
-The GUI allows to change the number of simulated tracks (from 1 to 3000).
+The server GUI allows to change the number of simulated tracks (from 1 to 3000).
 
 ## What does the server do?
 The server simulates the requested number of tracks. It uses an airspace of 500nm by 400nm with a maximum height of 40,000ft.
@@ -83,18 +91,31 @@ The server transmitts all track data to a connected client every 1000ms.
 
 # Client
 
-## Starting the Client
+## Application Client (X11)
+
+### Starting the Client
 Start the client with the command line argument `-s` and pass the servers hostname. By default it will connect to the server on port 2566 and will come up with its GUI.
 
 ```
 $ ./CWPMockUp -s <hostname of the server>
 ```
 
-The GUI allows to change the refresh rate on the display (from 10 to 5000ms).
+## Web Client
+
+### Starting the Client
+Start the client with the command line argument `-s` and pass the servers hostname. By default it will connect to the server on port 2566 and will come up with its GUI.
+
+```
+$ .chromium http://<hostname of the server>:2566/
+```
+
+The web GUI allows to change the refresh rate on the display (from 10 to 5000ms).
+Furthermore, it supports zooming (via mouse wheel) and panning (via mouse dragging).
+
 
 ## What does the client do?
 
-The client receives incoming track data and will update its own track file. It will set history dots (every 10s). On every received track update, an collision detection is done: when ever another track is closer than 10nm, it tagged.
+The client receives incoming track data via JSON and will update its own track file. It will set history dots (every 10s). On every received track update, an collision detection is done: when ever another track is closer than 10nm, it tagged.
 
 The display is updated in the requested refresh rate. This update always updates all tracks including symbol, prediction, history dots, label and -- if set -- an collsion alarm.
 
