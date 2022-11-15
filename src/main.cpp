@@ -73,12 +73,16 @@ static void usage(const char *argv0)
 	fprintf(stderr," -?\n --help\n"
 					"          show this help\n");
 	fprintf(stderr," -s <name or IP address>\n --server <name or IP address>\n"
-					"          if this option is set, the " __TITLE__ " will run in client mode and will connect the referenced server;\n"
-					"          this option is not passed, " __TITLE__ " will run in server mode\n");
+					"          if this option is set, the " __TITLE__ " will run in client mode and\n"
+					"          will connect the referenced server;\n"
+					"          if this option is not passed, " __TITLE__ " will run in server mode\n");
 	fprintf(stderr," -p <port>\n --port <port>\n"
-					"          use <port> for the communication between server and client; default is %d\n",DEFAULT_PORT);
+					"          use <port> for the communication between server and client;\n"
+					"          default is %d\n",DEFAULT_PORT);
 	fprintf(stderr," -d <dir>\n --docroot <dir>\n"
-					"          set the document root to serve static files from\n");
+					"          set the document root to serve static files via HTTP to deliver the web\n"
+					"          version of " __TITLE__ ";\n"
+					"          default is %s\n",DEFAULT_HTDOC_ROOT);
 	fprintf(stderr," -v\n --verbose\n"
 					"          enable debug mode and print some information\n");
 	fprintf(stderr," -f\n --fullscreen\n"
