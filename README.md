@@ -1,17 +1,15 @@
 # CWP-Mockup
 
-A mockup for an ATC controller working position (CWP). It can be used as a test dummy for different display or hardware setups.
+A mockup for an ATC controller working position (CWP), which comes with an X11 client and a web client implementation. It can be used as a test dummy for different display or hardware setups.
 
 It has no hardware dependency, no openGL/GLX. It can be used to test different paths between the server and the client and to measure the impact of bandwidth and latency.
-Both, the X11 implementation and the web implementation have simple and effective implemented to reach good performance which is comparable.
+
+The X11 client is implemented with [FLTK](https://www.fltk.org/). The web client is implented with [PixiJS](https://pixijs.com/).
+Both clients are simple and effective implemented to reach good performance which is comparable.
 
 <div style="float:left;">
 <img src="Ressources/Screenshots/CWP-Mockup-Screenshot-Display-1.png" height="500px">
 </div>
-
-This Mockup implements a server/client setup for a CWP in one single binary. In addition a standard and modern web browser can be used to display the web version.
-
-This binary is then started as a server and a client. Both, server and client, have simple frontends.
 
 # Build the software
 
@@ -106,10 +104,10 @@ $ ./CWPMockUp -s <hostname of the server>
 Start the client with the command line argument `-s` and pass the servers hostname. By default it will connect to the server on port 2566 and will come up with its GUI.
 
 ```
-$ .chromium http://<hostname of the server>:2566/
+$ chromium http://<hostname of the server>:2566/
 ```
 
-The web GUI allows to change the refresh rate on the display (from 10 to 5000ms).
+The GUI of both clients allows to change the refresh rate on the display (from 10 to 5000ms).
 Furthermore, it supports zooming (via mouse wheel) and panning (via mouse dragging).
 
 
