@@ -40,7 +40,7 @@
 /*
 **	default document root
 */
-#define HTDOC_ROOT			"/usr/share/" __TITLE__ "/htdocs/"
+#define DEFAULT_HTDOC_ROOT	"/usr/share/" __TITLE__ "/htdocs/"
 
 /*
 **  some very common stuff
