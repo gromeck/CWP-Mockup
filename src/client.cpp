@@ -861,6 +861,23 @@ static void callbackOnMainWindowClose(Fl_Widget *widget, void *)
 }
 
 /*
+**	this event handler controls the fullscreen mode
+*/
+static int handleFullscreen(int event)
+{
+	if (event == FL_SHORTCUT) {
+		if (Fl::event_key() == XK_F11) {
+			if (mainWindow->fullscreen_active())
+				mainWindow->fullscreen_off();
+			else
+				mainWindow->fullscreen();
+			return true;
+		}
+	}
+	return false;
+}
+
+/*
 **	handle the frontend generation
 */
 static int runClientFrontend(bool fullscreen)
@@ -934,6 +951,7 @@ static int runClientFrontend(bool fullscreen)
 		handleShutdown(NULL);
 		Fl::add_timeout((double) _refresh_rate / MSEC_PER_SEC,refreshDisplay);
 		mainWindow->callback(callbackOnMainWindowClose);
+		Fl::add_handler(handleFullscreen);
 	}
 
 	/*
