@@ -117,7 +117,6 @@ static void *runServerTraffic(void *arg)
 {
 	while (!_shutdown) {
 		int n;
-		unsigned long now = millis();
 
 		/*
 		**	check the number of requested tracks
@@ -144,6 +143,8 @@ static void *runServerTraffic(void *arg)
 		/*
 		**	move all tracks
 		*/
+		unsigned long now = millis();
+
 		for (n = 0;n < _tracks;n++) {
 			unsigned long delta = now - _track[n].last_update;
 
