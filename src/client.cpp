@@ -281,18 +281,18 @@ static void *runClientCommunication(void *arg)
 						Poco::JSON::Object::Ptr positionObj = position.extract<Poco::JSON::Object::Ptr>();
 
 						track_update.position.set(
-								positionObj->getValue<long>("x"),
-								positionObj->getValue<long>("y"),
-								positionObj->getValue<long>("z"));
+								positionObj->getValue<double>("x"),
+								positionObj->getValue<double>("y"),
+								positionObj->getValue<double>("z"));
 						track_update.speed = element->getValue<unsigned long>("speed");
 
 						Poco::Dynamic::Var prediction = element->get("prediction");
 						Poco::JSON::Object::Ptr predictionObj = prediction.extract<Poco::JSON::Object::Ptr>();
 
 						track_update.prediction.set(
-								predictionObj->getValue<long>("x"),
-								predictionObj->getValue<long>("y"),
-								predictionObj->getValue<long>("z"));
+								predictionObj->getValue<double>("x"),
+								predictionObj->getValue<double>("y"),
+								predictionObj->getValue<double>("z"));
 						if (element->get("timestamp") != "")
 							track_update.timestamp = element->getValue<unsigned long>("timestamp");
 
