@@ -267,16 +267,16 @@ class httpRequestHandlerTracks : public Poco::Net::HTTPRequestHandler
 			track->set("callsign",std::string(_track[n].callsign));
 
 			Poco::JSON::Object::Ptr position = new Poco::JSON::Object();
-			position->set("x",_track[n].position.getX());
-			position->set("y",_track[n].position.getY());
-			position->set("z",_track[n].position.getZ());
+			position->set("x",std::ceil(_track[n].position.getX() * DOUBLE_PRECISION) / DOUBLE_PRECISION);
+			position->set("y",std::ceil(_track[n].position.getY() * DOUBLE_PRECISION) / DOUBLE_PRECISION);
+			position->set("z",std::ceil(_track[n].position.getZ() * DOUBLE_PRECISION) / DOUBLE_PRECISION);
 			track->set("position",position);
 
 			track->set("speed",_track[n].speed);
 			Poco::JSON::Object::Ptr prediction = new Poco::JSON::Object();
-			prediction->set("x",_track[n].prediction.getX());
-			prediction->set("y",_track[n].prediction.getY());
-			prediction->set("z",_track[n].prediction.getZ());
+			prediction->set("x",std::ceil(_track[n].prediction.getX() * DOUBLE_PRECISION) / DOUBLE_PRECISION);
+			prediction->set("y",std::ceil(_track[n].prediction.getY() * DOUBLE_PRECISION) / DOUBLE_PRECISION);
+			prediction->set("z",std::ceil(_track[n].prediction.getZ() * DOUBLE_PRECISION) / DOUBLE_PRECISION);
 			track->set("prediction",prediction);
 
 			track->set("timestamp",now);

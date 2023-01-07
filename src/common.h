@@ -94,6 +94,9 @@
 // prediction time [s]
 #define PREDICTION_TIME     60
 
+// reduce the double to this precision
+#define DOUBLE_PRECISION	1000.0
+
 extern Poco::ConsoleChannel *_channel;
 extern Poco::Logger &_logger;
 
