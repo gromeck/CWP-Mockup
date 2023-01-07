@@ -115,9 +115,11 @@ Furthermore, it supports zooming (via mouse wheel) and panning (via mouse draggi
 
 The client receives incoming track data via JSON and will update its own track file. It will set history dots (every 10s). On every received track update, an collision detection is done: when ever another track is closer than 10nm, it tagged.
 
-The display is updated in the requested refresh rate. This update always updates all tracks including symbol, prediction, history dots, label and -- if set -- an collsion alarm.
+The display is updated in the requested refresh rate. This update always updates all tracks including symbol, prediction, history dots, label and -- if set -- an collision alarm.
 
 The client allows panning by holding down the left mouse button, and zooming in and out with the mouse wheel.
+
+To make the display fullscreen, F11 can be used. This is a standard feature for browsers. The X11 client has this implemented, too.
 
 Clicking on a track symbol within a range of 3nm will open an info window showing track details.
 
