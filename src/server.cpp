@@ -98,6 +98,7 @@ static SERVER_TRACK *initilize_track(int idx)
 	/*
 	**	generate random position, heading and speed
 	*/
+	track.position.setRange(0,MAP_WIDTH,0,MAP_HEIGHT,0,MAP_DEPTH);
 	track.position.setRandom();
 	track.heading.setRandom();
 	track.speed = RANDOM(SPEED_MIN,SPEED_MAX);
@@ -171,7 +172,7 @@ static void *runServerTraffic(void *arg)
 
 				// compute the new position
 				scale = (double) KNOTS2NMS(_track[n].speed) * delta / MSEC_PER_SEC / distance;
-				_track[n].position = _track[n].position + (_track[n].heading - _track[n].position) * scale;
+				_track[n].position += (_track[n].heading - _track[n].position) * scale;
 
 				// compute the prediction
 				scale = (double) KNOTS2NMS(_track[n].speed) * PREDICTION_TIME / distance;

@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "coordinate.h"
-#include "common.h"
 
 Coordinate::Coordinate()
 {
@@ -51,21 +50,47 @@ void Coordinate::setX(double x)
 {
 	this->x = x;
 }
+
 void Coordinate::setY(double y)
 {
 	this->y = y;
-
 }
+
 void Coordinate::setZ(double z)
 {
 	this->z = z;
 }
 
+void Coordinate::setRange(double minX,double maxX,double minY,double maxY,double minZ,double maxZ)
+{
+	this->setRangeX(minX,maxX);
+	this->setRangeY(minY,maxY);
+	this->setRangeZ(minZ,maxZ);
+}
+
+void Coordinate::setRangeX(double minX,double maxX)
+{
+	this->minX = minX;
+	this->maxX = maxX;
+}
+
+void Coordinate::setRangeY(double minY,double maxY)
+{
+	this->minY = minY;
+	this->maxY = maxY;
+}
+
+void Coordinate::setRangeZ(double minZ,double maxZ)
+{
+	this->minZ = minZ;
+	this->maxZ = maxZ;
+}
+
 void Coordinate::setRandom(void)
 {
-	this->x = (double) rand() * (double) MAP_WIDTH  / RAND_MAX;
-	this->y = (double) rand() * (double) MAP_HEIGHT / RAND_MAX;
-	this->z = (double) rand() * (double) MAP_DEPTH  / RAND_MAX;
+	this->x = this->minX + (double) rand() * (this->maxX - this->minX) / RAND_MAX;
+	this->y = this->minY + (double) rand() * (this->maxY - this->minY) / RAND_MAX;
+	this->z = this->minZ + (double) rand() * (this->maxZ - this->minZ) / RAND_MAX;
 }
 
 void Coordinate::print(const char *title)
@@ -115,6 +140,15 @@ Coordinate Coordinate::operator+(const Coordinate b)
     return c;
 }
 
+Coordinate Coordinate::operator+=(const Coordinate b)
+{
+    this->x += b.x;
+    this->y += b.y;
+    this->z += b.z;
+
+    return *this;
+}
+
 Coordinate Coordinate::operator-(const Coordinate b)
 {
     Coordinate c;
@@ -124,6 +158,15 @@ Coordinate Coordinate::operator-(const Coordinate b)
     c.z = this->z - b.z;
 
     return c;
+}
+
+Coordinate Coordinate::operator-=(const Coordinate b)
+{
+    this->x -= b.x;
+    this->y -= b.y;
+    this->z -= b.z;
+
+    return *this;
 }
 
 Coordinate Coordinate::operator*(const Coordinate b)
@@ -149,6 +192,15 @@ Coordinate Coordinate::operator*(double scale)
     return c;
 }
 
+Coordinate Coordinate::operator*=(double scale)
+{
+    this->x *= scale;
+    this->y *= scale;
+    this->z *= scale;
+
+    return *this;
+}
+
 double Coordinate::getDistance(Coordinate b)
 {
 	return sqrt(
@@ -166,29 +218,29 @@ double Coordinate::getDistanceXY(Coordinate b)
 
 bool Coordinate::isInsideRange(void)
 {
-	if (this->x < 0 || this->x > MAP_WIDTH)
+	if (this->x < this->minX || this->x > this->maxX)
 		return false;
-	if (this->y < 0 || this->y > MAP_HEIGHT)
+	if (this->y < this->minY || this->y > this->maxY)
 		return false;
-	if (this->z < 0 || this->z > MAP_DEPTH)
+	if (this->z < this->minZ || this->z > this->maxZ)
 		return false;
 	return true;
 }
 
 void Coordinate::wrapToRange(void)
 {
-	if (this->x < 0)
-	 	this->x = 0;
-	if (this->x > MAP_WIDTH)
-		this->x = MAP_WIDTH;
+	if (this->x < this->minX)
+	 	this->x = this->minX;
+	if (this->x > this->maxX)
+		this->x = this->maxX;
 
-	if (this->y < 0)
-	 	this->y = 0;
-	if (this->y > MAP_HEIGHT)
-		this->y = MAP_HEIGHT;
+	if (this->y < this->minY)
+	 	this->y = this->minY;
+	if (this->y > this->maxY)
+		this->y = this->maxY;
 
-	if (this->z < 0)
-	 	this->z = 0;
-	if (this->z > MAP_DEPTH)
-		this->z = MAP_DEPTH;
+	if (this->z < this->minZ)
+	 	this->z = this->minZ;
+	if (this->z > this->maxZ)
+		this->z = this->maxZ;
 }/**/

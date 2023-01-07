@@ -29,9 +29,9 @@ private:
     double x;
     double y;
     double z;
-    double minX,maxX;
-    double minY,maxY;
-    double minZ,maxZ;
+    double minX = 0,maxX = 1;
+    double minY = 0,maxY = 1;
+    double minZ = 0,maxZ = 1;
 
 public:
     Coordinate();
@@ -42,6 +42,11 @@ public:
     void setX(double x);
     void setY(double y);
     void setZ(double z);
+
+	void setRange(double minX,double maxX,double minY,double maxY,double minZ,double maxZ);
+	void setRangeX(double minX,double maxX);
+	void setRangeY(double minY,double maxY);
+	void setRangeZ(double minZ,double maxZ);
 
     void print(const char *title);
     void printRange(const char *title);
@@ -54,8 +59,11 @@ public:
 
     Coordinate operator+(const Coordinate b);
     Coordinate operator-(const Coordinate b);
+    Coordinate operator+=(const Coordinate b);
+    Coordinate operator-=(const Coordinate b);
     Coordinate operator*(const Coordinate b);
     Coordinate operator*(double scale);
+    Coordinate operator*=(double scale);
 
     double getDistance(Coordinate b);
     double getDistanceXY(Coordinate b);
