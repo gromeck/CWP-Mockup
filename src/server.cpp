@@ -165,10 +165,10 @@ static void *runServerTraffic(void *arg)
 					*/
 					_track[n].position.wrapToRange();
 					_track[n].heading.setRandom();
-				}
 
-				// compute the distance to the heading position
-				distance = _track[n].position.getDistance(_track[n].heading);
+					// re-compute the distance to the heading position
+					distance = _track[n].position.getDistance(_track[n].heading);
+				}
 
 				// compute the new position
 				scale = (double) KNOTS2NMS(_track[n].speed) * delta / MSEC_PER_SEC / distance;
