@@ -29,7 +29,7 @@
 #include <Poco/Timestamp.h>
 
 #define __TITLE__		    "CWP-Mockup"
-#define __VERSION_NR__	    "0.1"
+#define __VERSION_NR__	    "0.2"
 
 
 /*
