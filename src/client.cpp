@@ -204,7 +204,7 @@ static void *runClientCommunication(void *arg)
 			**	lookup the first IPv4 address
 			*/
 			std::string ipaddr;
-			Poco::Net::HostEntry const &host = Poco::Net::DNS::hostByName(_server,Poco::Net::DNS::DNS_HINT_AI_V4MAPPED);
+			Poco::Net::HostEntry const &host = Poco::Net::DNS::hostByName(std::string(_server),Poco::Net::DNS::DNS_HINT_AI_V4MAPPED);
 			Poco::Net::HostEntry::AddressList const &addresses = host.addresses();
 			Poco::Net::HostEntry::AddressList::const_iterator address_it;
 			for (address_it = addresses.begin();address_it != addresses.end();address_it++) {
