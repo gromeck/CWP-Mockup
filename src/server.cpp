@@ -100,6 +100,7 @@ static SERVER_TRACK *initilize_track(int idx)
 	*/
 	track.position.setRange(0,MAP_WIDTH,0,MAP_HEIGHT,0,MAP_DEPTH);
 	track.position.setRandom();
+	track.heading.setRange(0,MAP_WIDTH,0,MAP_HEIGHT,0,MAP_DEPTH);
 	track.heading.setRandom();
 	track.speed = RANDOM(SPEED_MIN,SPEED_MAX);
 
