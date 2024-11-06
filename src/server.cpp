@@ -63,7 +63,6 @@
 static int _new_tracks = TRACKS_DEFAULT;
 static int _tracks = 0;
 static SERVER_TRACK _track[TRACKS_MAX];
-
 #define RANDOM_UPPER_CHAR		((char) ('A' + random() % ('Z' - 'A' + 1)))
 
 /*
@@ -410,21 +409,14 @@ static Fl_Double_Window* window;
 static Fl_Box *numTracksLabel;
 static Fl_Int_Input *numTracksInput;
 static Fl_Return_Button *setButton;
+static Fl_Button *spawnClientButton;
+static Fl_Button *quitButton;
+
+static char *_path_to_executable = NULL;
 
 static void updateNumTracksInput(int tracks)
 {
 	numTracksInput->value(Poco::format("%d",tracks).c_str());
-}
-
-static void clickedSetButton(Fl_Widget *widget)
-{
-	int tracks = atoi(numTracksInput->value());
-
-	if (tracks < TRACKS_MIN)
-		tracks = TRACKS_MIN;
-	if (tracks > TRACKS_MAX)
-		tracks = TRACKS_MAX;
-	updateNumTracksInput(_new_tracks = tracks);
 }
 
 /*
@@ -438,13 +430,56 @@ static void handleShutdown(void *)
 	Fl::add_timeout(0.1,handleShutdown);
 }
 
+static void clickedSetButton(Fl_Widget *widget)
+{
+	int tracks = atoi(numTracksInput->value());
+
+	if (tracks < TRACKS_MIN)
+		tracks = TRACKS_MIN;
+	if (tracks > TRACKS_MAX)
+		tracks = TRACKS_MAX;
+	updateNumTracksInput(_new_tracks = tracks);
+}
+
+static void clickedSpawnClientButton(Fl_Widget *widget)
+{
+	pid_t pid = 0;
+	if ((pid  = fork()) < 0) {
+		/*
+		**	fork failed
+		*/
+		LOG_ERROR("clickedSpawnClientButton: fork() failed");
+	}
+	if (pid) {
+		/*
+		**	this is the server process
+		*/
+	}
+	else {
+		/*
+		**	this is the client process
+		*/
+		char port_buffer[3 * sizeof(int) + 2];
+
+		sprintf(port_buffer,"%d",_port);
+		execlp(_path_to_executable,_path_to_executable,"--server","localhost","--port",port_buffer,(char *) NULL);
+		LOG_ERROR("execlp(%s,...) returned, which shouldn't occur");
+		exit(0);
+	}
+}
+
+static void clickedQuitButton(Fl_Widget *widget)
+{
+	_shutdown = true;
+}
+
 /*
 **	handle the frontend generation
 */
 static int runServerFrontend(void)
 {
 	const int padding = 10;
-	const int width = 240,height = 120;
+	const int width = 240,height = 200;
 	int x = padding,y = padding;
 	int h;
 
@@ -464,6 +499,14 @@ static int runServerFrontend(void)
 	setButton->callback(clickedSetButton);
 	y += h + padding;
 
+	spawnClientButton = new Fl_Button(x,y,width - 2 * padding,h = 30,"Spawn Local Client");
+	spawnClientButton->callback(clickedSpawnClientButton);
+	y += h + padding;
+
+	quitButton = new Fl_Button(x,y,width - 2 * padding,h = 30,"Quit Server");
+	quitButton->callback(clickedQuitButton);
+	y += h + padding;
+
 	// handle shutdown
 	handleShutdown(NULL);
 
@@ -473,12 +516,13 @@ static int runServerFrontend(void)
 	return Fl::run();
 }
 
-int runServer(int port,const char *docroot)
+int runServer(const char *path_to_executable,int port,const char *docroot)
 {
 	pthread_t communicationPID;
 	pthread_t trafficPID;
 
 	_port = port;
+	_path_to_executable = strdup(path_to_executable);
 	LOG_NOTICE("runServer: port=%d  docroot=%s",port,std::string(docroot));
 
 	/*

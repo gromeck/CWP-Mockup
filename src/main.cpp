@@ -212,7 +212,7 @@ int main(int argc,char *argv[])
 		**	run in server mode
 		*/
 		LOG_NOTICE("running in server mode with port=%d, docroot=%s",port,std::string(docroot));
-		runServer(port,docroot);
+		runServer(argv[0],port,docroot);
 	}
 
 	/*
