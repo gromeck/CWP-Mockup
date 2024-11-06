@@ -25,14 +25,18 @@ AM_CONDITIONAL(STATIC_ENABLED, test "$STATIC_ENABLED" = yes)
 #
 if test "$STATIC_ENABLED" = yes; then
 	CFLAGS="$CFLAGS --static"
-	LDFLAGS="$LDFLAGS --static"
+	#LDFLAGS="$LDFLAGS --static"
 fi
-POCOLIBS="-lPocoUtil -lPocoFoundation -lPocoNet -lPocoJSON"
+POCOLIBS="-L/usr/local/lib -lPocoUtil -lPocoFoundation -lPocoNet -lPocoJSON"
 CFLAGS="$CFLAGS -g -ggdb -fno-strict-aliasing -fPIC -Wall"
 CFLAGS="$CFLAGS -D_GNU_SOURCE"
 CFLAGS="$CFLAGS "
 LDFLAGS="$LDFLAGS -g -ggdb"
-LIBS="$LIBS -lfltk $POCOLIBS -lpthread"
+if test "$STATIC_ENABLED" = yes; then
+	LIBS="$LIBS -Wl,-Bstatic -lfltk $POCOLIBS $POCOLIBS -Wl,-Bdynamic -lpthread"
+else
+	LIBS="$LIBS -lfltk $POCOLIBS -lpthread"
+fi
 if test "$STATIC_ENABLED" = yes; then
 	LIBS="$LIBS -lXinerama -lXcursor -lxkbcommon -lXfixes -lXft -lX11-xcb -lfontconfig -lexpat -lfreetype -lpng16 -lXrender -lXext -lX11 -lxcb -lXau -lXdmcp -lm -ldl -lz -luuid -lpthread -pthread"
 fi
