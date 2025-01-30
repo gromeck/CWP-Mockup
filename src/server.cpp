@@ -66,6 +66,18 @@ static SERVER_TRACK _track[TRACKS_MAX];
 #define RANDOM_UPPER_CHAR		((char) ('A' + random() % ('Z' - 'A' + 1)))
 
 /*
+**	correct the track number to be in the min/max range
+*/
+static int normalizeNumberOfTracks(int tracks)
+{
+	if (tracks < TRACKS_MIN)
+		tracks = TRACKS_MIN;
+	if (tracks > TRACKS_MAX)
+		tracks = TRACKS_MAX;
+	return tracks;
+}
+
+/*
 **	generate a callsign
 */
 static const char *createCallsign(int idx)
@@ -434,11 +446,7 @@ static void clickedSetButton(Fl_Widget *widget)
 {
 	int tracks = atoi(numTracksInput->value());
 
-	if (tracks < TRACKS_MIN)
-		tracks = TRACKS_MIN;
-	if (tracks > TRACKS_MAX)
-		tracks = TRACKS_MAX;
-	updateNumTracksInput(_new_tracks = tracks);
+	updateNumTracksInput(_new_tracks = normalizeNumberOfTracks(tracks));
 }
 
 static void clickedSpawnClientButton(Fl_Widget *widget)
@@ -516,12 +524,13 @@ static int runServerFrontend(void)
 	return Fl::run();
 }
 
-int runServer(const char *path_to_executable,int port,const char *docroot)
+int runServer(const char *path_to_executable,const int port,const int tracks,const char *docroot)
 {
 	pthread_t communicationPID;
 	pthread_t trafficPID;
 
 	_port = port;
+	_new_tracks = normalizeNumberOfTracks(tracks);
 	_path_to_executable = strdup(path_to_executable);
 	LOG_NOTICE("runServer: port=%d  docroot=%s",port,std::string(docroot));
 

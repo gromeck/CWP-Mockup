@@ -79,6 +79,8 @@ static void usage(const char *argv0)
 	fprintf(stderr," -p <port>\n --port <port>\n"
 					"          use <port> for the communication between server and client;\n"
 					"          default is %d\n",DEFAULT_PORT);
+	fprintf(stderr," -t <number>\n --tracks <number>\n"
+					"          when " __TITLE__ " runs in server mode, it will start with this number of tracks\n");
 	fprintf(stderr," -d <dir>\n --docroot <dir>\n"
 					"          set the document root to serve static files via HTTP to deliver the web\n"
 					"          version of " __TITLE__ ";\n"
@@ -98,6 +100,7 @@ int main(int argc,char *argv[])
 	int port = DEFAULT_PORT;
 	int fullscreen = false;
 	int logLevel = Poco::Message::PRIO_WARNING;
+	int tracks = TRACKS_DEFAULT;
 
 	_logger.setLevel(logLevel);
 
@@ -109,6 +112,7 @@ int main(int argc,char *argv[])
 		{ "docroot",	1,	0,	'd' },
 		{ "port",		1,	0,	'p' },
 		{ "fullscreen",	0,	0,	'f' },
+		{ "tracks",		1,	0,	't' },
 		{ "verbose",	0,	0,	'v' },
 		{ NULL,			0,	0,	0	},
 	};
@@ -148,6 +152,11 @@ int main(int argc,char *argv[])
 						**	specify the port to use
 						*/
 						port = atoi(optarg);
+						break;
+			case 't':	/*
+						**	specify the number of tracks
+						*/
+						tracks = atoi(optarg);
 						break;
 			case 'd':	/*
 						**	specify the document root
@@ -212,7 +221,7 @@ int main(int argc,char *argv[])
 		**	run in server mode
 		*/
 		LOG_NOTICE("running in server mode with port=%d, docroot=%s",port,std::string(docroot));
-		runServer(argv[0],port,docroot);
+		runServer(argv[0],port,tracks,docroot);
 	}
 
 	/*
