@@ -1,0 +1,30 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<title>Client CWP-Mockup (Web)</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<script src="js/3rdparty/pixi.min.js"></script>
+<script src="js/defs.js"></script>
+<script src="js/clock.js"></script>
+<script src="js/sysinfo.js"></script>
+<script src="js/tracks.js"></script>
+<script src="js/airspace.js"></script>
+<script src="js/client.js"></script>
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body onload="runClient('sysinfo','clock','refreshrate','viewport');" onresize="resizeHandler('container','viewport')">
+	<div class=header id=header>
+		<div class=controls id=controls>
+			Refreshrate [ms]:
+			<input id=refreshrate type=text maxlength=4>
+			<button type=button>Set</button>
+			<button type=button onclick="clickedResetPanAndZoomButton()">Reset Pan &amp; Zoom</button>
+		</div>
+		<div class=sysinfo id=sysinfo></div>
+		<div class=clock id=clock></div>
+	</div>
+	<div class=container id=container>
+		<div class=viewport id=viewport></div>
+	</div>
+</body>
+</html>
