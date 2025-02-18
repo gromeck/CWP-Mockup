@@ -21,12 +21,15 @@
 #	along with CWP-MockUp.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS= src
+SUBDIRS= src web
 
 ACLOCAL_AMFLAGS = -I m4
 
 EXTRA_DIST = m4/ChangeLog
 
-install-exec-hook:
-	$(mkinstalldirs) /usr/share/CWP-Mockup/htdocs/
-	cp -pr $(srcdir)/web/htdocs /usr/share/CWP-Mockup/
+%.1.gz: %.1
+	gzip <$< >$@
+
+install-data-am: CWPMockUp.1.gz
+	$(mkinstalldirs) $(DESTDIR)$(datarootdir)/man/man1
+	$(install_sh) -m 0644 $< $(DESTDIR)$(datarootdir)/man/man1/

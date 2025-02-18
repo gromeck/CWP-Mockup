@@ -6,7 +6,8 @@
 #	Process this file with autoconf to produce a configure script.
 #
 
-AC_INIT([CWPMockUp], [m4_esyscmd_s([cat VERSION])])
+AC_INIT([cwpmockup], [m4_esyscmd_s([cat VERSION])])
+AC_PREFIX_DEFAULT(/usr)
 AC_CONFIG_SRCDIR([.])
 AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
@@ -44,5 +45,5 @@ fi
 #
 #	find all Makefiles
 #
-AC_CONFIG_FILES([ Makefile src/Makefile ])
+AC_CONFIG_FILES([ Makefile src/Makefile web/Makefile ])
 AC_OUTPUT
