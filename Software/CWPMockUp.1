@@ -1,0 +1,82 @@
+.TH man 1 "18 February 2025" "1.1" "CWPMockUp man page"
+.SH NAME
+CWPMockUp \- Mockup for an ATC controller working position (CWP)
+
+.SH SYNOPSIS
+.B CWPMockUp
+[(\-V|\-\-version)]
+[(\-?|\-\-help)]
+[(\-s|\-\-server) <name or IP address>]
+[(\-p|\-\-port) <port>]
+[(\-t|\-\-tracks) <number>]
+[(\-d|\-\-docroot) <dir>]
+[(\-v|\-\-verbose)]
+[(\-f|\-\-fullscreen)]
+
+.SH DESCRIPTION
+.TP 8
+.B \-V
+.TP 8
+.B \-\-version
+print version number an exit
+.TP 8
+.B \-?
+.TP 8
+.B \-\-help
+show this help
+.TP 8
+.B \-s <name or IP address>
+.TP 8
+.B \-\-server <name or IP address>
+if this option is set, the CWP-Mockup will run in client mode and
+will connect the referenced server;
+if this option is not passed, CWP-Mockup will run in server mode
+.TP 8
+.B \-p <port>
+.TP 8
+.B \-\-port <port>
+use <port> for the communication between server and client;
+default is 2566
+.TP 8
+.B \-t <number>
+.TP 8
+.B \-\-tracks <number>
+when CWP-Mockup runs in server mode, it will start with this number of tracks
+.TP 8
+.B \-d dir>
+.TP 8
+.B \-\-docroot <dir>
+set the document root to serve static files via HTTP to deliver the web
+version of CWP-Mockup;
+default is /usr/share/CWP-Mockup/htdocs/
+.TP 8
+.B \-v
+.TP 8
+.B \-\-verbose
+enable debug mode and print some information
+.TP 8
+.B \-f
+.TP 8
+.B \-\-fullscreen
+when CWP-Mockup runs in client mode, open the main window fullscreen
+.P
+A mockup for an ATC controller working position (CWP), which comes with an X11 client
+and a web client implementation.
+It can be used as a test dummy for different display or hardware setups.
+.P
+It has no hardware dependency, no openGL/GLX. It can be used to test different paths
+between the server and the client and to measure the impact of bandwidth and latency.
+.P
+The X11 client is implemented with FLTK. The web client is implented with PixiJS.
+Both clients are simple and effective implemented to reach good performance which is comparable.
+.P
+.SH EXAMPLES
+-
+.SH SEE ALSO
+-
+.SH BUGS
+Non so far.
+.SH AUTHOR
+Christian Lorenz <gromeck@gromeck.de>
+.SH COPYRIGHT
+This software is licensed under the GNU General Public License, see <https://www.gnu.org/licenses/>
