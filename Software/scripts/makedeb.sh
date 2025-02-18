@@ -110,7 +110,7 @@ echo "3.0 (native)" >debian/source/format
 cat >debian/control <<EOM
 Source: ${PACKAGE}
 Maintainer: ${DEBFULLNAME} <${DEBEMAIL}>
-Section: contrib/games
+Section: contrib/graphics
 Priority: optional
 Standards-Version: 4.5.1
 Build-Depends: debhelper (>= 9)
@@ -118,7 +118,7 @@ Build-Depends: debhelper (>= 9)
 Package: ${PACKAGE}
 Architecture: any
 Depends: \${shlibs:Depends}, \${misc:Depends}, fonts-liberation
-Description: A mockup for an ATC controller working position (CWP),
+Description: Mockup for an ATC controller working position (CWP),
  which comes with an X11 client and a web client implementation.
  It can be used as a test dummy for different display or hardware setups.
 EOM
