@@ -40,7 +40,7 @@
 /*
 **	default document root
 */
-#define DEFAULT_HTDOC_ROOT	"/usr/share/" __TITLE__ "/htdocs/"
+#define DEFAULT_HTDOCS_ROOT	"/usr/share/cwpmockup/htdocs/"
 
 /*
 **  some very common stuff
