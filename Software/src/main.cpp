@@ -84,7 +84,7 @@ static void usage(const char *argv0)
 	fprintf(stderr," -d <dir>\n --docroot <dir>\n"
 					"          set the document root to serve static files via HTTP to deliver the web\n"
 					"          version of " __TITLE__ ";\n"
-					"          default is %s\n",DEFAULT_HTDOC_ROOT);
+					"          default is %s\n",DEFAULT_HTDOCS_ROOT);
 	fprintf(stderr," -v\n --verbose\n"
 					"          enable debug mode and print some information\n");
 	fprintf(stderr," -f\n --fullscreen\n"
@@ -96,7 +96,7 @@ int main(int argc,char *argv[])
 {
 	int c,n,m;
 	char *server = NULL;
-	const char *docroot = DEFAULT_HTDOC_ROOT;
+	const char *docroot = DEFAULT_HTDOCS_ROOT;
 	int port = DEFAULT_PORT;
 	int fullscreen = false;
 	int logLevel = Poco::Message::PRIO_WARNING;
