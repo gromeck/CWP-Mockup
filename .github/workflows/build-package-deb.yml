@@ -1,7 +1,8 @@
 name: Build Debian package
 
-  uses: dawidd6/action-debian-package@v1.6.0
-  with:
+uses: dawidd6/action-debian-package@v1.6.0
+  
+with:
     # Target CPU architecture (amd64, arm64, arm, ...)
     cpu_architecture: # optional, default is amd64
     # Directory where Debian sources are, relative to workspace
