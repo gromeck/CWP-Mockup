@@ -1,17 +1,16 @@
-name: Build DEB package
-  # You may pin to the exact commit or the version.
-  # uses: DevChall-by-SDCY-and-VXM/debian-buildpackage-template@66fa246e5413db3c4e145307f176ba8aa82546aa
-  uses: DevChall-by-SDCY-and-VXM/debian-buildpackage-template@v0.0.13
-  with:
-    distro: debian:latest
-    arch: amd64
+name: Build Debian package
 
-    build_arguments: # default is -b
-    build_options: # default is 
-    build_profiles: # default is 
-    gpg_signing_key: # optional
-    package_name: # optional
-    package_version: # optional
-    package_maintainer: christian.lorenz@gromeck.de
-    package_class: s 
-    package_generate_orig: # optional
+  uses: dawidd6/action-debian-package@v1.6.0
+  with:
+    # Target CPU architecture (amd64, arm64, arm, ...)
+    cpu_architecture: # optional, default is amd64
+    # Directory where Debian sources are, relative to workspace
+    source_directory: # optional, default is ./
+    # Directory where build artifacts will be placed, relative to workspace
+    artifacts_directory: # optional, default is ./
+    # OS distribution name, value from `debian/changelog` is used if not defined
+    os_distribution: # optional
+    # Command line parameters provided to 'lintian'
+    lintian_opts: # optional, default is 
+    # Run lintian checks
+    lintian_run: # optional
