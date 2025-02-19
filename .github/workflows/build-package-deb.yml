@@ -1,17 +1,47 @@
 name: Build Debian package
 
-uses: dawidd6/action-debian-package@v1.6.0
-  
-with:
-    # Target CPU architecture (amd64, arm64, arm, ...)
-    cpu_architecture: # optional, default is amd64
-    # Directory where Debian sources are, relative to workspace
-    source_directory: # optional, default is ./
-    # Directory where build artifacts will be placed, relative to workspace
-    artifacts_directory: # optional, default is ./
-    # OS distribution name, value from `debian/changelog` is used if not defined
-    os_distribution: # optional
-    # Command line parameters provided to 'lintian'
-    lintian_opts: # optional, default is 
-    # Run lintian checks
-    lintian_run: # optional
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Cache Debian package dependencies
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/deb
+        key: ${{ runner.os }}-deb-${{ hashFiles('**/debian/control') }}
+        restore-keys: |
+          ${{ runner.os }}-deb-
+
+    - name: Build Debian package
+      uses: dawidd6/action-debian-package@v1.6.0
+      with:
+        cpu_architecture: amd64
+        source_directory: ./
+        artifacts_directory: ./artifacts
+        os_distribution: ubuntu
+        lintian_opts: --info --display-info
+        lintian_run: true
+
+    - name: Upload Debian package artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: debian-package
+        path: ./artifacts/*.deb
