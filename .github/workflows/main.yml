@@ -1,6 +1,5 @@
 name: Build Debian package
-  # You may pin to the exact commit or the version.
-  # uses: dawidd6/action-debian-package@c7f4c07ff6586bdc12752bb73a45203bfe25efad
+
   uses: dawidd6/action-debian-package@v1.6.0
   with:
     # Target CPU architecture (amd64, arm64, arm, ...)
