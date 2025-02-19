@@ -83,12 +83,17 @@ static int normalizeNumberOfTracks(int tracks)
 static const char *createCallsign(int idx)
 {
 	static char callsign[CALLSIGN_LENGTH + 1];
+	int n = 0;
 
-	snprintf(callsign,sizeof(callsign),"%c%c%c%04d",
-		RANDOM_UPPER_CHAR,
-		RANDOM_UPPER_CHAR,
-		RANDOM_UPPER_CHAR,
-		idx);
+	// start with 3 random chars
+	callsign[n++] = RANDOM_UPPER_CHAR;
+	callsign[n++] = RANDOM_UPPER_CHAR;
+	callsign[n++] = RANDOM_UPPER_CHAR;
+
+	// add the last 4 digits of the index
+	for (int digit = 4;digit > 0;digit--,idx /= 10)
+		callsign[n + digit - 1] = '0' + idx % 10;
+
 	return callsign;
 }
 
