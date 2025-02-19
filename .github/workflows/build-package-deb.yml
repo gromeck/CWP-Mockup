@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: debian-latest
 
     steps:
     - name: Checkout code
@@ -36,7 +36,7 @@ jobs:
         cpu_architecture: amd64
         source_directory: ./
         artifacts_directory: ./artifacts
-        os_distribution: ubuntu
+        os_distribution: debian
         lintian_opts: --info --display-info
         lintian_run: true
 
