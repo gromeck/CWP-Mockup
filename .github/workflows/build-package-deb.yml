@@ -1,4 +1,4 @@
-- name: Build DEB package
+name: Build DEB package
   # You may pin to the exact commit or the version.
   # uses: DevChall-by-SDCY-and-VXM/debian-buildpackage-template@66fa246e5413db3c4e145307f176ba8aa82546aa
   uses: DevChall-by-SDCY-and-VXM/debian-buildpackage-template@v0.0.13
